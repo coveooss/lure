@@ -1,0 +1,10 @@
+
+{
+  "name": "lure",
+  "description": "hooks for devs",
+  "memory": 128,
+  "timeout": 5,
+  "role": "ROLETOREPLACEHERE",
+	"defaultEnvironment": "dev",
+  "environment": {}
+}

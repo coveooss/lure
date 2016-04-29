@@ -12,18 +12,20 @@ import (
 // This part interesting
 // https://github.com/golang/go/blob/1441f76938bf61a2c8c2ed1a65082ddde0319633/src/cmd/go/vcs.go
 
-func checkForUpdatesJob(projects []Project) {
+func checkForUpdatesJob(projects []*Project) {
 	for {
 		for _, project := range projects {
 			pp.Println("updating: ", project.Remote)
-			updateProject(project)
+			updateProject(*project)
 		}
-		time.Sleep(60 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 }
 
 func updateProject(project Project) {
+
 	if project.Token == nil {
+		pp.Printf("Error: \"Cant update no token\" %s", project)
 		return
 	}
 
@@ -34,49 +36,56 @@ func updateProject(project Project) {
 	}
 	repoPath := "/tmp/" + repoGUID.String()
 
-	if err := hgClone("https://x-token-auth:"+project.Token.AccessToken+"@"+project.Remote, repoPath); err != nil {
+	log.Printf("Info: cloning: %s to %s", project.Remote, repoPath)
+
+	repoRemote := "https://x-token-auth:" + project.Token.AccessToken + "@" + project.Remote
+	if err := hgClone(repoRemote, repoPath); err != nil {
 		log.Printf("Error: \"Could not clone\" %s", err)
 		return
 	}
 
+	log.Printf("Info: updating %s to: %s", project.Remote, project.DefaultBranch)
+	if err := hgUpdate(repoPath, project.DefaultBranch); err != nil {
+		log.Fatalf("Error: \"Could not update\" %s", err)
+	}
+
+	modulesToUpdate := npmOutdated(repoPath)
+
+	for _, moduleToUpdate := range modulesToUpdate {
+		updateModule(moduleToUpdate, project, repoPath, repoRemote)
+	}
 }
 
-func a() {
-	repo := "ssh://hg@bitbucket.org/pastjean/dummy"
-	repoGUID, err := guid.V4()
-	if err != nil {
-		log.Fatalf("Error: \"Could not generate guid\" %s", err)
+func updateModule(moduleToUpdate moduleVersion, project Project, repoPath string, repoRemote string) {
+	pp.Println("project needs update of ", moduleToUpdate)
+
+	pp.Println("updating to default branch:", moduleToUpdate)
+	if err := hgUpdate(repoPath, project.DefaultBranch); err != nil {
+		log.Printf("Error: \"Could not update\" %s", err)
+		return
 	}
 
-	repoPath := "/tmp/" + repoGUID.String()
-
-	if err := hgClone(repo, repoPath); err != nil {
-		log.Fatalf("Error: \"Could not clone\" %s", err)
+	branch := "lure-" + moduleToUpdate.Module + "-" + moduleToUpdate.Latest
+	pp.Println("creating branch", branch)
+	if err := hgBranch(repoPath, branch); err != nil {
+		log.Printf("Error: \"Could not update\" %s", err)
+		return
 	}
 
-	if err := hgUpdate(repoPath, "default"); err != nil {
-		log.Fatalf("Error: \"Could not update\" %s", err)
+	readPackageJSON(repoPath, moduleToUpdate.Module, moduleToUpdate.Latest)
+
+	if err := hgCommit(repoPath, "Update "+moduleToUpdate.Module+" to "+moduleToUpdate.Latest); err != nil {
+		log.Printf("Error: \"Could not commit\" %s", err)
+		return
 	}
 
-	// TODO: verifier les dépendances
-
-	// TODO: for each dependency to update
-	// for () {
-	if err := hgUpdate(repoPath, "default"); err != nil {
-		log.Fatalf("Error: \"Could not update\" %s", err)
+	pp.Println("Pushing changes")
+	if err := hgPush(repoPath, repoRemote); err != nil {
+		log.Fatalf("Error: \"Could not push\" %s", err)
+		return
 	}
 
-	if err := hgBranch(repoPath, "lure-yournewbranchname"); err != nil {
-		log.Fatalf("Error: \"Could not update\" %s", err)
-	}
-	// TODO: update dependency
-
-	if err := hgCommit(repoPath, "MOTHERFUKING NEW DEPENDENCY"); err != nil {
-		log.Fatalf("Error: \"Could not update\" %s", err)
-	}
-
-	// TODO: make pull request
-	// }
+	// TODO: create pull request
 }
 
 func execute(pwd string, command string, params ...string) error {

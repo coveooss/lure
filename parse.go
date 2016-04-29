@@ -4,26 +4,22 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os/exec"
 	"regexp"
+
+	"github.com/blang/semver"
 )
 
 type moduleVersion struct {
 	Module  string
 	Current string
 	Latest  string
+	Wanted  string
 }
 
 type packageJSON map[string]interface{}
-
-func main() {
-	versions := npmOutdated(".")
-	fmt.Println(versions)
-	readPackageJSON(versions[0].Module, versions[0].Latest)
-}
 
 func npmOutdated(path string) []moduleVersion {
 	cmd := exec.Command("npm", "outdated")
@@ -39,7 +35,7 @@ func npmOutdated(path string) []moduleVersion {
 	reader := bytes.NewReader(out.Bytes())
 	scanner := bufio.NewScanner(reader)
 
-	npmRegex, _ := regexp.Compile(`(\w+)\s+(\d+\.\d+\.\d+)\s+(\d+\.\d+\.\d+)\s+(\d+\.\d+\.\d+)`)
+	npmRegex, _ := regexp.Compile(`(\w+)\s+(\d+\.\d+\.\d+|MISSING)\s+(\d+\.\d+\.\d+)\s+(\d+\.\d+\.\d+)`)
 
 	lineIndex := 0
 
@@ -47,11 +43,20 @@ func npmOutdated(path string) []moduleVersion {
 	for scanner.Scan() {
 		if lineIndex != 0 {
 			result := npmRegex.FindStringSubmatch(scanner.Text())
-			version = append(version, moduleVersion{
+
+			mv := moduleVersion{
 				Module:  result[1],
+				Wanted:  result[3],
 				Current: result[2],
 				Latest:  result[4],
-			})
+			}
+
+			wantedVersion, _ := semver.Parse(mv.Wanted)
+			latestVersion, _ := semver.Parse(mv.Latest)
+
+			if wantedVersion.LT(latestVersion) {
+				version = append(version, mv)
+			}
 		}
 		lineIndex++
 	}
@@ -59,8 +64,8 @@ func npmOutdated(path string) []moduleVersion {
 	return version
 }
 
-func readPackageJSON(module string, version string) {
-	packageJSONBuffer, _ := ioutil.ReadFile("./package.json")
+func readPackageJSON(dir string, module string, version string) {
+	packageJSONBuffer, _ := ioutil.ReadFile(dir + "/package.json")
 	var parsedPackageJSON packageJSON
 
 	json.Unmarshal(packageJSONBuffer, &parsedPackageJSON)
@@ -70,7 +75,7 @@ func readPackageJSON(module string, version string) {
 	updateJSON(&parsedPackageJSON, "optionalDependencies", module, version)
 
 	updatedJSON, _ := json.MarshalIndent(&parsedPackageJSON, "", "  ")
-	ioutil.WriteFile("./package.json", updatedJSON, 0770)
+	ioutil.WriteFile(dir+"/package.json", updatedJSON, 0770)
 }
 
 func updateJSON(parsedPackageJSON *packageJSON, key string, module string, version string) {

@@ -13,9 +13,13 @@ func hgBranch(repository, branchname string) error {
 }
 
 func hgCommit(repository, message string) error {
-	return execute(repository, "hg", "commit", message)
+	return execute(repository, "hg", "commit", "-m", message)
 }
 
 func hgPush(repository, remote string) error {
-	return execute(repository, "hg", "push", remote)
+	return execute(repository, "hg", "push", "--new-branch", remote)
+}
+
+func hgPushDefault(repository string) error {
+	return execute(repository, "hg", "push", "--new-branch")
 }

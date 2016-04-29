@@ -10,6 +10,7 @@ import (
 	"github.com/k0kubun/pp"
 
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/bitbucket"
 )
 
 var (
@@ -20,10 +21,7 @@ var (
 	bitBucketOAuthConfig = oauth2.Config{
 		ClientID:     os.Getenv("BITBUCKET_CLIENT_ID"),
 		ClientSecret: os.Getenv("BITBUCKET_CLIENT_SECRET"),
-		Endpoint: oauth2.Endpoint{
-			AuthURL:  "https://bitbucket.org/site/oauth2/authorize",
-			TokenURL: "https://bitbucket.org/site/oauth2/access_token",
-		},
+		Endpoint:     bitbucket.Endpoint,
 	}
 )
 
@@ -62,7 +60,7 @@ func main() {
 	})
 	fmt.Println("--------GO THERE ", bitBucketOAuthConfig.AuthCodeURL(""))
 	go r.Run(":9090")
-	go checkForUpdatesJob([]Project{project})
+	go checkForUpdatesJob([]*Project{&project})
 
 	for {
 		time.Sleep(1000 * time.Second)

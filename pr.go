@@ -25,7 +25,7 @@ type PullRequest struct {
 	CloseSourceBranch bool   `json:"close_source_branch"`
 }
 
-func main() {
+func potato() {
 	createPullRequest(
 		"lure-update-dep",
 		"hmLf9fPPcQ4u0oBIwe3O2BvyqrMk3lHO9bLZ-fq73PC654R7hXrBu68y_Q6s_5gDBO6eafjZxVnlzC_Ogss=",

@@ -85,7 +85,8 @@ func updateModule(moduleToUpdate moduleVersion, project Project, repoPath string
 		return
 	}
 
-	// TODO: create pull request
+	pp.Println("creating PR")
+	createPullRequest(branch, project.Token.AccessToken, "pastjean", "dummy", moduleToUpdate.Module, moduleToUpdate.Latest)
 }
 
 func execute(pwd string, command string, params ...string) error {

@@ -35,7 +35,7 @@ func npmOutdated(path string) []moduleVersion {
 	reader := bytes.NewReader(out.Bytes())
 	scanner := bufio.NewScanner(reader)
 
-	npmRegex, _ := regexp.Compile(`(\w+)\s+(\d+\.\d+\.\d+|MISSING)\s+(\d+\.\d+\.\d+)\s+(\d+\.\d+\.\d+)`)
+	npmRegex, _ := regexp.Compile(`([^\s]+)\s+(\d+\.\d+\.\d+|MISSING)\s+(\d+\.\d+\.\d+)\s+(\d+\.\d+\.\d+)`)
 
 	lineIndex := 0
 

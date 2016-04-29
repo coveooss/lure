@@ -65,18 +65,19 @@ func readPackageJSON(module string, version string) {
 
 	json.Unmarshal(packageJSONBuffer, &parsedPackageJSON)
 
-	dependencies := parsedPackageJSON["dependencies"].(map[string]interface{})
-	//devDependencies := parsedPackageJSON["devDependencies"].(map[string]interface{})
-
-	//if dependencies[module] {
-	dependencies[module] = version
-	//}
-
-	//if devDependencies[module] {
-	//	devDependencies[module] = version
-	//}
+	updateJSON(&parsedPackageJSON, "dependencies", module, version)
+	updateJSON(&parsedPackageJSON, "devDependencies", module, version)
+	updateJSON(&parsedPackageJSON, "optionalDependencies", module, version)
 
 	updatedJSON, _ := json.MarshalIndent(&parsedPackageJSON, "", "  ")
-
 	ioutil.WriteFile("./package.json", updatedJSON, 0770)
+}
+
+func updateJSON(parsedPackageJSON *packageJSON, key string, module string, version string) {
+	_, ok := (*parsedPackageJSON)[key]
+	if ok {
+		dependencies := (*parsedPackageJSON)[key].(map[string]interface{})
+		dependencies[module] = version
+		(*parsedPackageJSON)[key] = dependencies
+	}
 }

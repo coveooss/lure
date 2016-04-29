@@ -35,7 +35,7 @@ func main() {
 		log.Fatalf("Error: \"Could not update\" %s", err)
 	}
 
-	if err := hgBranch(repoPath, "yournewbranchname"); err != nil {
+	if err := hgBranch(repoPath, "lure-yournewbranchname"); err != nil {
 		log.Fatalf("Error: \"Could not update\" %s", err)
 	}
 	// TODO: update dependency
@@ -44,31 +44,8 @@ func main() {
 		log.Fatalf("Error: \"Could not update\" %s", err)
 	}
 
+	// TODO: make pull request
 	// }
-
-	//
-
-	log.Printf("clone path: %s", repoPath)
-}
-
-func hgClone(source, to string) error {
-	return execute("hg", "clone", source, to)
-}
-
-func hgUpdate(repository, rev string) error {
-	return execute(repository, "hg", "update", rev)
-}
-
-func hgBranch(repository, branchname string) error {
-	return execute(repository, "hg", "branch", branchname)
-}
-
-func hgCommit(repository, message string) error {
-	return execute(repository, "hg", "commit", message)
-}
-
-func hgPush(repository, remote string) error {
-	return execute(repository, "hg", "push", remote)
 }
 
 func execute(pwd string, command string, params ...string) error {

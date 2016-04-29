@@ -62,6 +62,7 @@ func main() {
 	go r.Run(":9090")
 	go checkForUpdatesJob([]*Project{&project})
 
+	execute("", "open", "http://localhost:9090/login")
 	for {
 		time.Sleep(1000 * time.Second)
 	}

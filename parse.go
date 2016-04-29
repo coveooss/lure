@@ -10,6 +10,7 @@ import (
 	"regexp"
 
 	"github.com/blang/semver"
+	"github.com/k0kubun/pp"
 )
 
 type moduleVersion struct {
@@ -35,7 +36,7 @@ func npmOutdated(path string) []moduleVersion {
 	reader := bytes.NewReader(out.Bytes())
 	scanner := bufio.NewScanner(reader)
 
-	npmRegex, _ := regexp.Compile(`([^\s]+)\s+(\d+\.\d+\.\d+|MISSING)\s+(\d+\.\d+\.\d+)\s+(\d+\.\d+\.\d+)`)
+	npmRegex, _ := regexp.Compile(`([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s`)
 
 	lineIndex := 0
 
@@ -55,6 +56,7 @@ func npmOutdated(path string) []moduleVersion {
 			latestVersion, _ := semver.Parse(mv.Latest)
 
 			if wantedVersion.LT(latestVersion) {
+				pp.Println(mv)
 				version = append(version, mv)
 			}
 		}

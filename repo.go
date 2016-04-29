@@ -35,7 +35,7 @@ func main() {
 		log.Fatalf("Error: \"Could not update\" %s", err)
 	}
 
-	if err := hgBranch(repoPath, "yournewbranchname"); err != nil {
+	if err := hgBranch(repoPath, "lure-yournewbranchname"); err != nil {
 		log.Fatalf("Error: \"Could not update\" %s", err)
 	}
 	// TODO: update dependency
@@ -45,10 +45,6 @@ func main() {
 	}
 
 	// }
-
-	//
-
-	log.Printf("clone path: %s", repoPath)
 }
 
 func hgClone(source, to string) error {

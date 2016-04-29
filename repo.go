@@ -3,14 +3,45 @@ package main
 import (
 	"log"
 	"os/exec"
+	"time"
 
+	"github.com/k0kubun/pp"
 	"github.com/vsekhar/govtil/guid"
 )
 
 // This part interesting
 // https://github.com/golang/go/blob/1441f76938bf61a2c8c2ed1a65082ddde0319633/src/cmd/go/vcs.go
 
-func main() {
+func checkForUpdatesJob(projects []Project) {
+	for {
+		for _, project := range projects {
+			pp.Println("updating: ", project.Remote)
+			updateProject(project)
+		}
+		time.Sleep(60 * time.Second)
+	}
+}
+
+func updateProject(project Project) {
+	if project.Token == nil {
+		return
+	}
+
+	repoGUID, err := guid.V4()
+	if err != nil {
+		log.Printf("Error: \"Could not generate guid\" %s", err)
+		return
+	}
+	repoPath := "/tmp/" + repoGUID.String()
+
+	if err := hgClone("https://x-token-auth:"+project.Token.AccessToken+"@"+project.Remote, repoPath); err != nil {
+		log.Printf("Error: \"Could not clone\" %s", err)
+		return
+	}
+
+}
+
+func a() {
 	repo := "ssh://hg@bitbucket.org/pastjean/dummy"
 	repoGUID, err := guid.V4()
 	if err != nil {

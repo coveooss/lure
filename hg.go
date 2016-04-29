@@ -1,7 +1,7 @@
 package main
 
 func hgClone(source, to string) error {
-	return execute("hg", "clone", source, to)
+	return execute("", "hg", "clone", source, to)
 }
 
 func hgUpdate(repository, rev string) error {

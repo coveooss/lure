@@ -15,7 +15,7 @@ import (
 
 var (
 	project = Project{
-		Remote:        "bitbucket.org/pastjean/dummy",
+		Remote:        os.Getenv("BITBUCKET_REPO"),
 		DefaultBranch: "default",
 	}
 	bitBucketOAuthConfig = oauth2.Config{

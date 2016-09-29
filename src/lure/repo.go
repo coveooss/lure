@@ -49,7 +49,7 @@ func updateProject(project Project) {
 		log.Fatalf("Error: \"Could not update\" %s", err)
 	}
 
-	modulesToUpdate := npmOutdated(repoPath)
+	modulesToUpdate := mvnOutdated(repoPath)
 
 	for _, moduleToUpdate := range modulesToUpdate {
 		updateModule(moduleToUpdate, project, repoPath, repoRemote)

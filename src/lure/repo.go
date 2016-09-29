@@ -4,6 +4,7 @@ import (
 	"log"
 	"os/exec"
 	"time"
+	"fmt"
 
 	"github.com/k0kubun/pp"
 	"github.com/vsekhar/govtil/guid"
@@ -88,7 +89,10 @@ func updateModule(moduleToUpdate moduleVersion, project Project, repoPath string
 	}
 
 	pp.Println("creating PR")
-	createPullRequest(branch, project.Token.AccessToken, project.Owner, project.Name, moduleToUpdate.Module, moduleToUpdate.Latest)
+
+	title := fmt.Sprintf("Update %s to version %s", moduleToUpdate.Module, moduleToUpdate.Latest)
+	description := fmt.Sprintf("%s version %s is now available! Please update.", moduleToUpdate.Module, moduleToUpdate.Latest)
+	createPullRequest(branch, project.Token.AccessToken, project.Owner, project.Name, title, description)
 }
 
 func execute(pwd string, command string, params ...string) error {

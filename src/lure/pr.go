@@ -36,10 +36,10 @@ func potato() {
 		"15.0.1")
 }
 
-func createPullRequest(branch string, token string, owner string, repo string, module string, version string) {
+func createPullRequest(branch string, token string, owner string, repo string, title string, description string) {
 	pr := PullRequest{
-		Title:       fmt.Sprintf("Update %s to version %s", module, version),
-		Description: fmt.Sprintf("%s version %s is now available! Please update.", module, version),
+		Title:       title,
+		Description: description,
 		Source: Source{
 			Branch: Branch{
 				Name: branch,

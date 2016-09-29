@@ -34,7 +34,7 @@ func mvnOutdated(path string) []moduleVersion {
 		fmt.Printf("> %s - %q\n", scanner.Text(), result)
 		if result != nil {
 			mv := moduleVersion{
-				Module:  result[1] + result[2],
+				Module:  result[1] + ":" + result[2],
 				Current: result[3],
 				Latest:  result[4],
 			}

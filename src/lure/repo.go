@@ -61,14 +61,14 @@ func updateModule(moduleToUpdate moduleVersion, project Project, repoPath string
 
 	pp.Println("updating to default branch:", moduleToUpdate)
 	if err := hgUpdate(repoPath, project.DefaultBranch); err != nil {
-		log.Printf("Error: \"Could not update\" %s", err)
+		log.Printf("Error: \"Could not switch to default branch\" %s", err)
 		return
 	}
 
 	branch := "lure-" + moduleToUpdate.Module + "-" + moduleToUpdate.Latest
 	pp.Println("creating branch", branch)
 	if err := hgBranch(repoPath, branch); err != nil {
-		log.Printf("Error: \"Could not update\" %s", err)
+		log.Printf("Error: \"Could not create branch\" %s", err)
 		return
 	}
 

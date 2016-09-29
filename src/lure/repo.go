@@ -65,7 +65,8 @@ func updateModule(moduleToUpdate moduleVersion, project Project, repoPath string
 		return
 	}
 
-	branch := "lure-" + moduleToUpdate.Module + "-" + moduleToUpdate.Latest
+	branchGUID, _ := guid.V4()
+	branch := hgSanitizeBranchName("lure-" + moduleToUpdate.Module + "-" + moduleToUpdate.Latest + "-" + branchGUID.String())
 	pp.Println("creating branch", branch)
 	if err := hgBranch(repoPath, branch); err != nil {
 		log.Printf("Error: \"Could not create branch\" %s", err)
@@ -86,10 +87,11 @@ func updateModule(moduleToUpdate moduleVersion, project Project, repoPath string
 	}
 
 	pp.Println("creating PR")
-	createPullRequest(branch, project.Token.AccessToken, "pastjean", "dummy", moduleToUpdate.Module, moduleToUpdate.Latest)
+	createPullRequest(branch, project.Token.AccessToken, project.Owner, project.Name, moduleToUpdate.Module, moduleToUpdate.Latest)
 }
 
 func execute(pwd string, command string, params ...string) error {
+	log.Printf("%s %q\n", command, params)
 	cmd := exec.Command(command, params...)
 	cmd.Dir = pwd
 

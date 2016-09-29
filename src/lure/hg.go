@@ -5,7 +5,7 @@ import (
 )
 
 func hgSanitizeBranchName(name string) string {
-	reg, _ := regexp.Compile("[^a-zA-Z0-9_-]*")
+	reg, _ := regexp.Compile("[^a-zA-Z0-9_-]+")
 	safe := reg.ReplaceAllString(name, "_")
 	return safe
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -56,6 +57,7 @@ func createPullRequest(branch string, token string, owner string, repo string, m
 	prRequest.Header.Add("Content-Type", "application/json")
 	prRequest.Header.Add("Authorization", "Bearer "+token)
 
+	log.Printf("%s\n", prRequest)
 	resp, _ := http.DefaultClient.Do(prRequest)
 
 	body, _ := ioutil.ReadAll(resp.Body)

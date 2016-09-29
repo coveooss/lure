@@ -73,7 +73,8 @@ func updateModule(moduleToUpdate moduleVersion, project Project, repoPath string
 		return
 	}
 
-	readPackageJSON(repoPath, moduleToUpdate.Module, moduleToUpdate.Latest)
+	//readPackageJSON(repoPath, moduleToUpdate.Module, moduleToUpdate.Latest)
+	mvnUpdateDep(repoPath, moduleToUpdate.Module, moduleToUpdate.Latest)
 
 	if err := hgCommit(repoPath, "Update "+moduleToUpdate.Module+" to "+moduleToUpdate.Latest); err != nil {
 		log.Printf("Error: \"Could not commit\" %s", err)

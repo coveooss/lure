@@ -46,3 +46,7 @@ func mvnOutdated(path string) []moduleVersion {
 
 	return version
 }
+
+func mvnUpdateDep(path string, dependency string, version string) error {
+	return execute(path, "mvn", "versions:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
+}

@@ -3,7 +3,7 @@
 web hooks, for devs.
 
 ## env.
-`IGNORE_DELINED_PR=1` Will ignore declined PR when looking if the PR existss
+`IGNORE_DECLINED_PR=1` Will ignore declined PR when looking if the PR existss
 
 See [bitbucket documentation](https://confluence.atlassian.com/bitbucket/oauth-on-bitbucket-cloud-238027431.html#OAuthonBitbucketCloud-OAuth2.0) for OAuth setup.
 

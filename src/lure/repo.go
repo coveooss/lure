@@ -51,13 +51,24 @@ func updateProject(project Project) {
 	}
 
 	modulesToUpdate := mvnOutdated(repoPath)
+	pullRequests := getPullRequests(project.Token.AccessToken, project.Owner, project.Name)
 
 	for _, moduleToUpdate := range modulesToUpdate {
-		updateModule(moduleToUpdate, project, repoPath, repoRemote)
+
+		updateModule(moduleToUpdate, project, repoPath, repoRemote, pullRequests)
 	}
 }
 
-func updateModule(moduleToUpdate moduleVersion, project Project, repoPath string, repoRemote string) {
+func updateModule(moduleToUpdate moduleVersion, project Project, repoPath string, repoRemote string, existingPRs []PullRequest) {
+
+	title := fmt.Sprintf("Update %s to version %s", moduleToUpdate.Module, moduleToUpdate.Latest)
+	for _, pr := range existingPRs {
+		if (pr.Title == title) {
+			log.Printf("There already is a PR for: %s", title)
+			return
+		}
+	}
+
 	pp.Println("project needs update of ", moduleToUpdate)
 
 	pp.Println("updating to default branch:", moduleToUpdate)
@@ -89,8 +100,6 @@ func updateModule(moduleToUpdate moduleVersion, project Project, repoPath string
 	}
 
 	pp.Println("creating PR")
-
-	title := fmt.Sprintf("Update %s to version %s", moduleToUpdate.Module, moduleToUpdate.Latest)
 	description := fmt.Sprintf("%s version %s is now available! Please update.", moduleToUpdate.Module, moduleToUpdate.Latest)
 	createPullRequest(branch, project.Token.AccessToken, project.Owner, project.Name, title, description)
 }

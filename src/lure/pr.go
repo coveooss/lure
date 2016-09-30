@@ -26,6 +26,10 @@ type PullRequest struct {
 	CloseSourceBranch bool   `json:"close_source_branch"`
 }
 
+type PullRequestList struct {
+	PullRequest []PullRequest `json:"values"`
+}
+
 func potato() {
 	createPullRequest(
 		"lure-update-dep",
@@ -34,6 +38,27 @@ func potato() {
 		"dummy",
 		"react",
 		"15.0.1")
+}
+
+var apiURI = "https://api.bitbucket.org/2.0/repositories"
+
+func getPullRequests(token string, username string, repoSlug string) []PullRequest {
+	//Get Open PR
+	url := fmt.Sprintf("%s/%s/%s/pullrequests/", apiURI, username, repoSlug)
+
+	prRequest, _ := http.NewRequest("GET", url, nil)
+	prRequest.Header.Add("Content-Type", "application/json")
+	prRequest.Header.Add("Authorization", "Bearer " + token)
+
+	//defer prRequest.Body.Close()
+
+	resp, _ := http.DefaultClient.Do(prRequest)
+
+	//body, _ := ioutil.ReadAll(resp.Body)
+	//pp.Println(string(body))
+	var list PullRequestList
+	json.NewDecoder(resp.Body).Decode(&list)
+	return list.PullRequest
 }
 
 func createPullRequest(branch string, token string, owner string, repo string, title string, description string) {
@@ -48,7 +73,7 @@ func createPullRequest(branch string, token string, owner string, repo string, t
 		CloseSourceBranch: true,
 	}
 
-	url := fmt.Sprintf("https://api.bitbucket.org/2.0/repositories/%s/%s/pullrequests/", owner, repo)
+	url := fmt.Sprintf("%s/%s/%s/pullrequests/", apiURI, owner, repo)
 
 	buf := &bytes.Buffer{}
 	json.NewEncoder(buf).Encode(&pr)

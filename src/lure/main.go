@@ -4,20 +4,22 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"io/ioutil"
 	"time"
+	"bytes"
 
 	"github.com/gin-gonic/gin"
 	"github.com/k0kubun/pp"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/bitbucket"
+	"encoding/json"
 )
 
 var (
 	project = Project{
-		Owner:          os.Getenv("BITBUCKET_REPO_OWNER"),
+		Owner:         os.Getenv("BITBUCKET_REPO_OWNER"),
 		Name:          os.Getenv("BITBUCKET_REPO_NAME"),
-		Remote:        "bitbucket.org/" + os.Getenv("BITBUCKET_REPO_OWNER") + "/" + os.Getenv("BITBUCKET_REPO_NAME"),
 		DefaultBranch: "default",
 	}
 	bitBucketOAuthConfig = oauth2.Config{
@@ -27,12 +29,34 @@ var (
 	}
 )
 
+func loadConfig() (*LureConfig, error) {
+	data, err := ioutil.ReadFile("lure.config")
+	if err != nil {
+		return nil, err
+	}
+
+	var lureConfig *LureConfig = &LureConfig{}
+	if err := json.NewDecoder(bytes.NewReader(data)).Decode(lureConfig); err != nil {
+		return nil, err
+	}
+	return lureConfig, nil
+}
+
 func respondWithError(code int, message string, c *gin.Context) {
 	resp := map[string]string{"error": message}
 
 	c.JSON(code, resp)
 }
 func main() {
+
+	config, err := loadConfig()
+	if err != nil {
+		fmt.Printf("Error Loading Config: %s\n", err)
+		return
+	}
+	fmt.Printf("Config: %s\n", config)
+	projects := config.Projects
+
 	r := gin.Default()
 	r.GET("/login", func(c *gin.Context) {
 		pp.Println("plz")
@@ -55,14 +79,14 @@ func main() {
 			return
 		}
 
-		project.Token = token
-
 		pp.Println(token)
+
 		c.String(http.StatusFound, "Linking with Bitbucket worked - get out and wait for an update")
+
+		go checkForUpdatesJob(token, projects)
 	})
 	fmt.Println("--------GO THERE ", bitBucketOAuthConfig.AuthCodeURL(""))
 	go r.Run(":9090")
-	go checkForUpdatesJob([]*Project{&project})
 
 	execute("", "open", "http://localhost:9090/login")
 	for {

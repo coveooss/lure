@@ -8,24 +8,25 @@ import (
 
 	"github.com/k0kubun/pp"
 	"github.com/vsekhar/govtil/guid"
+	"golang.org/x/oauth2"
 )
 
 // This part interesting
 // https://github.com/golang/go/blob/1441f76938bf61a2c8c2ed1a65082ddde0319633/src/cmd/go/vcs.go
 
-func checkForUpdatesJob(projects []*Project) {
+func checkForUpdatesJob(token *oauth2.Token, projects []Project) {
 	for {
 		for _, project := range projects {
-			pp.Println("updating: ", project.Remote)
-			updateProject(*project)
+			pp.Println("updating: ", project.Owner + "/" + project.Name)
+			updateProject(token, project)
 		}
 		time.Sleep(10 * time.Second)
 	}
 }
 
-func updateProject(project Project) {
+func updateProject(token *oauth2.Token, project Project) {
 
-	if project.Token == nil {
+	if token == nil {
 		pp.Printf("Error: \"Cant update no token\" %s", project)
 		return
 	}
@@ -37,29 +38,30 @@ func updateProject(project Project) {
 	}
 	repoPath := "/tmp/" + repoGUID.String()
 
-	log.Printf("Info: cloning: %s to %s", project.Remote, repoPath)
+	projectRemote := "bitbucket.org/" + project.Owner + "/" + project.Name
 
-	repoRemote := "https://x-token-auth:" + project.Token.AccessToken + "@" + project.Remote
+	log.Printf("Info: cloning: %s to %s", projectRemote, repoPath)
+
+	repoRemote := "https://x-token-auth:" + token.AccessToken + "@" + projectRemote
 	if err := hgClone(repoRemote, repoPath); err != nil {
 		log.Printf("Error: \"Could not clone\" %s", err)
 		return
 	}
 
-	log.Printf("Info: updating %s to: %s", project.Remote, project.DefaultBranch)
+	log.Printf("Info: updating %s to: %s", projectRemote, project.DefaultBranch)
 	if err := hgUpdate(repoPath, project.DefaultBranch); err != nil {
 		log.Fatalf("Error: \"Could not update\" %s", err)
 	}
 
 	modulesToUpdate := mvnOutdated(repoPath)
-	pullRequests := getPullRequests(project.Token.AccessToken, project.Owner, project.Name)
+	pullRequests := getPullRequests(token.AccessToken, project.Owner, project.Name)
 
 	for _, moduleToUpdate := range modulesToUpdate {
-
-		updateModule(moduleToUpdate, project, repoPath, repoRemote, pullRequests)
+		updateModule(token, moduleToUpdate, project, repoPath, repoRemote, pullRequests)
 	}
 }
 
-func updateModule(moduleToUpdate moduleVersion, project Project, repoPath string, repoRemote string, existingPRs []PullRequest) {
+func updateModule(token *oauth2.Token, moduleToUpdate moduleVersion, project Project, repoPath string, repoRemote string, existingPRs []PullRequest) {
 
 	title := fmt.Sprintf("Update %s to version %s", moduleToUpdate.Module, moduleToUpdate.Latest)
 	for _, pr := range existingPRs {
@@ -101,7 +103,7 @@ func updateModule(moduleToUpdate moduleVersion, project Project, repoPath string
 
 	pp.Println("creating PR")
 	description := fmt.Sprintf("%s version %s is now available! Please update.", moduleToUpdate.Module, moduleToUpdate.Latest)
-	createPullRequest(branch, project.Token.AccessToken, project.Owner, project.Name, title, description)
+	createPullRequest(branch, token.AccessToken, project.Owner, project.Name, title, description)
 }
 
 func execute(pwd string, command string, params ...string) error {

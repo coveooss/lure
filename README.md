@@ -18,5 +18,9 @@ See [bitbucket documentation](https://confluence.atlassian.com/bitbucket/oauth-o
 ## test.
 
 ```sh
-cat event.json | go run functions/hello-go/main.go
+./go.osx.sh
+
+# Or
+
+go run *.go
 ```

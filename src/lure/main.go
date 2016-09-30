@@ -83,13 +83,14 @@ func main() {
 
 		c.String(http.StatusFound, "Linking with Bitbucket worked - get out and wait for an update")
 
-		go checkForUpdatesJob(token, projects)
+		checkForUpdatesJob(token, projects)
+		os.Exit(0)
 	})
 	fmt.Println("--------GO THERE ", bitBucketOAuthConfig.AuthCodeURL(""))
 	go r.Run(":9090")
 
 	execute("", "open", "http://localhost:9090/login")
 	for {
-		time.Sleep(1000 * time.Second)
+		time.Sleep(5000 * time.Second)
 	}
 }

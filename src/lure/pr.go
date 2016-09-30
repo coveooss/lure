@@ -34,7 +34,7 @@ var apiURI = "https://api.bitbucket.org/2.0/repositories"
 
 func getPullRequests(token string, username string, repoSlug string) []PullRequest {
 	//Get Open PR
-	url := fmt.Sprintf("%s/%s/%s/pullrequests/", apiURI, username, repoSlug)
+	url := fmt.Sprintf("%s/%s/%s/pullrequests/?state=OPEN&state=DECLINED", apiURI, username, repoSlug)
 
 	prRequest, _ := http.NewRequest("GET", url, nil)
 	prRequest.Header.Add("Content-Type", "application/json")

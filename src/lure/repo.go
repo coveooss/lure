@@ -68,7 +68,7 @@ func updateProject(token *oauth2.Token, project Project) {
 	}
 
 	modulesToUpdate := make([]moduleVersion, 0, 0)
-	modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repoPath)...)
+	modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repoPath))
 	modulesToUpdate = appendIfMissing(modulesToUpdate, mvnOutdated(repoPath))
 	pullRequests := getPullRequests(token.AccessToken, project.Owner, project.Name)
 

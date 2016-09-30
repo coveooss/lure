@@ -4,6 +4,7 @@ import (
 	"log"
 	"os/exec"
 	"fmt"
+	"reflect"
 
 	"github.com/k0kubun/pp"
 	"github.com/vsekhar/govtil/guid"
@@ -18,6 +19,23 @@ func checkForUpdatesJob(token *oauth2.Token, projects []Project) {
 		pp.Println("Updating Project: ", project.Owner + "/" + project.Name)
 		updateProject(token, project)
 	}
+}
+
+func appendIfMissing(modules []moduleVersion, modulesToAdd []moduleVersion) []moduleVersion {
+	for _, moduleToAdd := range modulesToAdd {
+		exist := false
+		for _, module := range modules {
+			if (reflect.DeepEqual(module, moduleToAdd)) {
+				exist = true
+				break;
+			}
+		}
+		if (!exist) {
+			modules = append(modules, moduleToAdd)
+		}
+	}
+
+	return modules
 }
 
 func updateProject(token *oauth2.Token, project Project) {
@@ -50,8 +68,8 @@ func updateProject(token *oauth2.Token, project Project) {
 	}
 
 	modulesToUpdate := make([]moduleVersion, 0, 0)
-	modulesToUpdate = append(modulesToUpdate, npmOutdated(repoPath)...)
-	modulesToUpdate = append(modulesToUpdate, mvnOutdated(repoPath)...)
+	modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repoPath)...)
+	modulesToUpdate = appendIfMissing(modulesToUpdate, mvnOutdated(repoPath))
 	pullRequests := getPullRequests(token.AccessToken, project.Owner, project.Name)
 
 	for _, moduleToUpdate := range modulesToUpdate {

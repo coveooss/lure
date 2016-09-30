@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"log"
 	"bytes"
 	"encoding/json"
@@ -33,19 +34,20 @@ type PullRequestList struct {
 var apiURI = "https://api.bitbucket.org/2.0/repositories"
 
 func getPullRequests(token string, username string, repoSlug string) []PullRequest {
-	//Get Open PR
-	url := fmt.Sprintf("%s/%s/%s/pullrequests/?state=OPEN&state=DECLINED", apiURI, username, repoSlug)
+
+	acceptedStates := "state=OPEN"
+	if (os.Getenv("IGNORE_DECLINED_PR") != "1") {
+		acceptedStates += "&state=DECLINED"
+	}
+
+	url := fmt.Sprintf("%s/%s/%s/pullrequests/?%s", apiURI, username, repoSlug, acceptedStates)
 
 	prRequest, _ := http.NewRequest("GET", url, nil)
 	prRequest.Header.Add("Content-Type", "application/json")
 	prRequest.Header.Add("Authorization", "Bearer " + token)
 
-	//defer prRequest.Body.Close()
-
 	resp, _ := http.DefaultClient.Do(prRequest)
 
-	//body, _ := ioutil.ReadAll(resp.Body)
-	//pp.Println(string(body))
 	var list PullRequestList
 	json.NewDecoder(resp.Body).Decode(&list)
 	return list.PullRequest

@@ -30,16 +30,6 @@ type PullRequestList struct {
 	PullRequest []PullRequest `json:"values"`
 }
 
-func potato() {
-	createPullRequest(
-		"lure-update-dep",
-		"hmLf9fPPcQ4u0oBIwe3O2BvyqrMk3lHO9bLZ-fq73PC654R7hXrBu68y_Q6s_5gDBO6eafjZxVnlzC_Ogss=",
-		"pastjean",
-		"dummy",
-		"react",
-		"15.0.1")
-}
-
 var apiURI = "https://api.bitbucket.org/2.0/repositories"
 
 func getPullRequests(token string, username string, repoSlug string) []PullRequest {

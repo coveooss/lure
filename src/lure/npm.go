@@ -13,13 +13,6 @@ import (
 	"github.com/k0kubun/pp"
 )
 
-type moduleVersion struct {
-	Module  string
-	Current string
-	Latest  string
-	Wanted  string
-}
-
 type packageJSON map[string]interface{}
 
 func npmOutdated(path string) []moduleVersion {
@@ -36,7 +29,7 @@ func npmOutdated(path string) []moduleVersion {
 	reader := bytes.NewReader(out.Bytes())
 	scanner := bufio.NewScanner(reader)
 
-	npmRegex, _ := regexp.Compile(`([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s`)
+	npmRegex, _ := regexp.Compile(`([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s*`)
 
 	lineIndex := 0
 
@@ -44,8 +37,8 @@ func npmOutdated(path string) []moduleVersion {
 	for scanner.Scan() {
 		if lineIndex != 0 {
 			result := npmRegex.FindStringSubmatch(scanner.Text())
-
 			mv := moduleVersion{
+				Type: "npm",
 				Module:  result[1],
 				Wanted:  result[3],
 				Current: result[2],
@@ -56,7 +49,7 @@ func npmOutdated(path string) []moduleVersion {
 			latestVersion, _ := semver.Parse(mv.Latest)
 
 			if wantedVersion.LT(latestVersion) {
-				pp.Println(mv)
+				pp.Printf("Including NPM version %s", mv)
 				version = append(version, mv)
 			}
 		}
@@ -66,7 +59,7 @@ func npmOutdated(path string) []moduleVersion {
 	return version
 }
 
-func readPackageJSON(dir string, module string, version string) {
+func readPackageJSON(dir string, module string, version string) error {
 	packageJSONBuffer, _ := ioutil.ReadFile(dir + "/package.json")
 	var parsedPackageJSON packageJSON
 
@@ -78,6 +71,8 @@ func readPackageJSON(dir string, module string, version string) {
 
 	updatedJSON, _ := json.MarshalIndent(&parsedPackageJSON, "", "  ")
 	ioutil.WriteFile(dir+"/package.json", updatedJSON, 0770)
+
+	return nil
 }
 
 func updateJSON(parsedPackageJSON *packageJSON, key string, module string, version string) {
@@ -88,3 +83,4 @@ func updateJSON(parsedPackageJSON *packageJSON, key string, module string, versi
 		(*parsedPackageJSON)[key] = dependencies
 	}
 }
+

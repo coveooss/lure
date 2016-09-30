@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"os/exec"
-	"time"
 	"fmt"
 
 	"github.com/k0kubun/pp"
@@ -15,12 +14,9 @@ import (
 // https://github.com/golang/go/blob/1441f76938bf61a2c8c2ed1a65082ddde0319633/src/cmd/go/vcs.go
 
 func checkForUpdatesJob(token *oauth2.Token, projects []Project) {
-	for {
-		for _, project := range projects {
-			pp.Println("updating: ", project.Owner + "/" + project.Name)
-			updateProject(token, project)
-		}
-		time.Sleep(10 * time.Second)
+	for _, project := range projects {
+		pp.Println("Updating Project: ", project.Owner + "/" + project.Name)
+		updateProject(token, project)
 	}
 }
 
@@ -48,12 +44,14 @@ func updateProject(token *oauth2.Token, project Project) {
 		return
 	}
 
-	log.Printf("Info: updating %s to: %s", projectRemote, project.DefaultBranch)
+	log.Printf("Info: switching %s to default branch: %s", projectRemote, project.DefaultBranch)
 	if err := hgUpdate(repoPath, project.DefaultBranch); err != nil {
-		log.Fatalf("Error: \"Could not update\" %s", err)
+		log.Fatalf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err)
 	}
 
-	modulesToUpdate := mvnOutdated(repoPath)
+	modulesToUpdate := make([]moduleVersion, 0, 0)
+	modulesToUpdate = append(modulesToUpdate, npmOutdated(repoPath)...)
+	modulesToUpdate = append(modulesToUpdate, mvnOutdated(repoPath)...)
 	pullRequests := getPullRequests(token.AccessToken, project.Owner, project.Name)
 
 	for _, moduleToUpdate := range modulesToUpdate {
@@ -63,7 +61,7 @@ func updateProject(token *oauth2.Token, project Project) {
 
 func updateModule(token *oauth2.Token, moduleToUpdate moduleVersion, project Project, repoPath string, repoRemote string, existingPRs []PullRequest) {
 
-	title := fmt.Sprintf("Update %s to version %s", moduleToUpdate.Module, moduleToUpdate.Latest)
+	title := fmt.Sprintf("Update %s dependency %s to version %s", moduleToUpdate.Type, moduleToUpdate.Module, moduleToUpdate.Latest)
 	for _, pr := range existingPRs {
 		if (pr.Title == title) {
 			log.Printf("There already is a PR for: %s", title)
@@ -71,37 +69,36 @@ func updateModule(token *oauth2.Token, moduleToUpdate moduleVersion, project Pro
 		}
 	}
 
-	pp.Println("project needs update of ", moduleToUpdate)
-
-	pp.Println("updating to default branch:", moduleToUpdate)
+	log.Printf("Info: switching %s to default branch: %s", repoPath, project.DefaultBranch)
 	if err := hgUpdate(repoPath, project.DefaultBranch); err != nil {
-		log.Printf("Error: \"Could not switch to default branch\" %s", err)
-		return
+		log.Fatalf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err)
 	}
 
 	branchGUID, _ := guid.V4()
 	branch := hgSanitizeBranchName("lure-" + moduleToUpdate.Module + "-" + moduleToUpdate.Latest + "-" + branchGUID.String())
-	pp.Println("creating branch", branch)
+	log.Printf("Creating branch %s\n", branch)
 	if err := hgBranch(repoPath, branch); err != nil {
 		log.Printf("Error: \"Could not create branch\" %s", err)
 		return
 	}
 
-	//readPackageJSON(repoPath, moduleToUpdate.Module, moduleToUpdate.Latest)
-	mvnUpdateDep(repoPath, moduleToUpdate.Module, moduleToUpdate.Latest)
+	switch moduleToUpdate.Type {
+	case "maven": mvnUpdateDep(repoPath, moduleToUpdate.Module, moduleToUpdate.Latest)
+	case "npm": readPackageJSON(repoPath, moduleToUpdate.Module, moduleToUpdate.Latest)
+	}
 
 	if err := hgCommit(repoPath, "Update "+moduleToUpdate.Module+" to "+moduleToUpdate.Latest); err != nil {
 		log.Printf("Error: \"Could not commit\" %s", err)
 		return
 	}
 
-	pp.Println("Pushing changes")
+	log.Printf("Pushing changes\n")
 	if err := hgPush(repoPath, repoRemote); err != nil {
 		log.Fatalf("Error: \"Could not push\" %s", err)
 		return
 	}
 
-	pp.Println("creating PR")
+	log.Printf("Creating PR\n")
 	description := fmt.Sprintf("%s version %s is now available! Please update.", moduleToUpdate.Module, moduleToUpdate.Latest)
 	createPullRequest(branch, token.AccessToken, project.Owner, project.Name, title, description)
 }

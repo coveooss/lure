@@ -17,11 +17,6 @@ import (
 )
 
 var (
-	project = Project{
-		Owner:         os.Getenv("BITBUCKET_REPO_OWNER"),
-		Name:          os.Getenv("BITBUCKET_REPO_NAME"),
-		DefaultBranch: "default",
-	}
 	bitBucketOAuthConfig = oauth2.Config{
 		ClientID:     os.Getenv("BITBUCKET_CLIENT_ID"),
 		ClientSecret: os.Getenv("BITBUCKET_CLIENT_SECRET"),

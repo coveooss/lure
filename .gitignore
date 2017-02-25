@@ -64,3 +64,6 @@ _testmain.go
 src/*
 !src/lure
 bin/
+out/
+.idea/dictionaries/
+.idea/inspectionProfiles/

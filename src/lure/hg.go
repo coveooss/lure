@@ -7,46 +7,66 @@ import (
 	"fmt"
 )
 
-func hgSanitizeBranchName(name string) string {
+type HgRepo struct {
+	localPath string
+	remotePath string
+
+}
+
+func HgSanitizeBranchName(name string) string {
 	reg, _ := regexp.Compile("[^a-zA-Z0-9_-]+")
 	safe := reg.ReplaceAllString(name, "_")
 	return safe
 }
 
-func hgClone(source, to string) (string, error) {
-	return execute("", "hg", "clone", source, to)
+func HgClone(source string, to string) (HgRepo, error) {
+	var repo HgRepo
+
+	if _, err := execute("", "hg", "clone", source, to); err != nil {
+		return repo, err
+	}
+
+	repo = HgRepo{
+		localPath: to,
+		remotePath: source,
+	}
+	return repo, nil
 }
 
-func hgUpdate(repository, rev string) (string, error) {
-	return execute(repository, "hg", "update", rev)
+func (hgRepo *HgRepo) Hg(args ...string) (string, error) {
+	return execute(hgRepo.localPath, "hg", args...)
 }
 
-func hgBranch(repository, branchname string) (string, error) {
-	return execute(repository, "hg", "branch", hgSanitizeBranchName(branchname))
+func (hgRepo *HgRepo) Update(rev string) (string, error) {
+	return hgRepo.Hg("update", rev)
 }
 
-func hgCommit(repository, message string) (string, error) {
-	return execute(repository, "hg", "commit", "-m", message)
+func (hgRepo *HgRepo) Branch(branchname string) (string, error) {
+	return hgRepo.Hg("branch", HgSanitizeBranchName(branchname))
 }
 
-func hgMerge(repository, branch string) (string, error) {
-	_, err := execute(repository, "hg", "merge", branch)
+func (hgRepo *HgRepo) Commit(message string) (string, error) {
+	return hgRepo.Hg("commit", "-m", message)
+}
+
+func (hgRepo *HgRepo) Merge(branch string) (string, error) {
+	_, err := hgRepo.Hg("merge", branch)
 	if err != nil {
 		return "", errors.New(fmt.Sprintf("Error: \"Could not merge %s into current branch\" %s", branch, err.Error()))
 	}
 	return "", nil
 }
 
-func hgPush(repository, remote string) (string, error) {
-	return execute(repository, "hg", "push", "--new-branch", remote)
+func (hgRepo *HgRepo) Push() (string, error) {
+	return hgRepo.Hg("push", "--new-branch", hgRepo.remotePath)
 }
 
-func hgPushDefault(repository string) (string, error) {
-	return execute(repository, "hg", "push", "--new-branch")
+func (hgRepo *HgRepo) PushDefault() (string, error) {
+	return hgRepo.Hg("push", "--new-branch")
 }
 
-func hgLogCommitsBetween(repository, baseRev string, secondRev string) ([]string, error) {
-	out, err := execute(repository, "hg", "log", "-r", "ancestors(" + secondRev + ") and not ancestors(" + baseRev + ")", "--template", "{node}\n")
+func (hgRepo *HgRepo) LogCommitsBetween(baseRev string, secondRev string) ([]string, error) {
+	out, err := hgRepo.Hg("log", "-r", "ancestors(" + secondRev + ") and not ancestors(" + baseRev + ")", "--template", "{node}\n")
 	if err != nil {
 		return []string{}, err
 	}

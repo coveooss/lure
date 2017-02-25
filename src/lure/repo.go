@@ -40,11 +40,13 @@ func appendIfMissing(modules []moduleVersion, modulesToAdd []moduleVersion) []mo
 	return modules
 }
 
-func cloneRepo(token *oauth2.Token, project Project) (string, string, error) {
+func cloneRepo(token *oauth2.Token, project Project) (HgRepo, error) {
 	repoGUID, err := guid.V4()
+
+	var repo HgRepo
 	if err != nil {
 		log.Printf("Error: \"Could not generate guid\" %s", err)
-		return "", "", err
+		return repo, err
 	}
 	repoPath := "/tmp/" + repoGUID.String()
 
@@ -53,12 +55,13 @@ func cloneRepo(token *oauth2.Token, project Project) (string, string, error) {
 	log.Printf("Info: cloning: %s to %s", projectRemote, repoPath)
 
 	repoRemote := "https://x-token-auth:" + token.AccessToken + "@" + projectRemote
-	if _, err := hgClone(repoRemote, repoPath); err != nil {
+	repo, err = HgClone(repoRemote, repoPath)
+	if err != nil {
 		log.Printf("Error: \"Could not clone\" %s", err)
-		return "", "", err
+		return repo, err
 	}
 
-	return repoRemote, repoPath, nil
+	return repo, nil
 }
 
 func updateProject(token *oauth2.Token, project Project) (error) {
@@ -68,30 +71,30 @@ func updateProject(token *oauth2.Token, project Project) (error) {
 	}
 
 
-	repoRemote, repoPath, err := cloneRepo(token, project)
+	repo, err := cloneRepo(token, project)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("Info: switching %s to default branch: %s", repoRemote, project.DefaultBranch)
-	if _, err := hgUpdate(repoPath, project.DefaultBranch); err != nil {
+	log.Printf("Info: switching %s to default branch: %s", repo.remotePath, project.DefaultBranch)
+	if _, err := repo.Update(project.DefaultBranch); err != nil {
 		return errors.New(fmt.Sprintf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err))
 	}
 
 
 	modulesToUpdate := make([]moduleVersion, 0, 0)
-	modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repoPath))
-	modulesToUpdate = appendIfMissing(modulesToUpdate, mvnOutdated(repoPath))
+	modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repo.localPath))
+	modulesToUpdate = appendIfMissing(modulesToUpdate, mvnOutdated(repo.localPath))
 	pullRequests := getPullRequests(token.AccessToken, project.Owner, project.Name)
 
 	for _, moduleToUpdate := range modulesToUpdate {
-		updateModule(token, moduleToUpdate, project, repoPath, repoRemote, pullRequests)
+		updateModule(token, moduleToUpdate, project, repo, pullRequests)
 	}
 
 	return nil
 }
 
-func updateModule(token *oauth2.Token, moduleToUpdate moduleVersion, project Project, repoPath string, repoRemote string, existingPRs []PullRequest) {
+func updateModule(token *oauth2.Token, moduleToUpdate moduleVersion, project Project, repo HgRepo, existingPRs []PullRequest) {
 
 	title := fmt.Sprintf("Update %s dependency %s to version %s", moduleToUpdate.Type, moduleToUpdate.Module, moduleToUpdate.Latest)
 	for _, pr := range existingPRs {
@@ -101,31 +104,31 @@ func updateModule(token *oauth2.Token, moduleToUpdate moduleVersion, project Pro
 		}
 	}
 
-	log.Printf("Info: switching %s to default branch: %s", repoPath, project.DefaultBranch)
-	if _, err := hgUpdate(repoPath, project.DefaultBranch); err != nil {
+	log.Printf("Info: switching %s to default branch: %s", repo.localPath, project.DefaultBranch)
+	if _, err := repo.Update(project.DefaultBranch); err != nil {
 		log.Fatalf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err)
 	}
 
 	branchGUID, _ := guid.V4()
-	branch := hgSanitizeBranchName("lure-" + moduleToUpdate.Module + "-" + moduleToUpdate.Latest + "-" + branchGUID.String())
+	branch := HgSanitizeBranchName("lure-" + moduleToUpdate.Module + "-" + moduleToUpdate.Latest + "-" + branchGUID.String())
 	log.Printf("Creating branch %s\n", branch)
-	if _, err := hgBranch(repoPath, branch); err != nil {
+	if _, err := repo.Branch(branch); err != nil {
 		log.Printf("Error: \"Could not create branch\" %s", err)
 		return
 	}
 
 	switch moduleToUpdate.Type {
-	case "maven": mvnUpdateDep(repoPath, moduleToUpdate.Module, moduleToUpdate.Latest)
-	case "npm": readPackageJSON(repoPath, moduleToUpdate.Module, moduleToUpdate.Latest)
+	case "maven": mvnUpdateDep(repo.localPath, moduleToUpdate.Module, moduleToUpdate.Latest)
+	case "npm": readPackageJSON(repo.localPath, moduleToUpdate.Module, moduleToUpdate.Latest)
 	}
 
-	if _, err := hgCommit(repoPath, "Update "+moduleToUpdate.Module+" to "+moduleToUpdate.Latest); err != nil {
+	if _, err := repo.Commit("Update "+moduleToUpdate.Module+" to "+moduleToUpdate.Latest); err != nil {
 		log.Printf("Error: \"Could not commit\" %s", err)
 		return
 	}
 
 	log.Printf("Pushing changes\n")
-	if _, err := hgPush(repoPath, repoRemote); err != nil {
+	if _, err := repo.Push(); err != nil {
 		log.Fatalf("Error: \"Could not push\" %s", err)
 		return
 	}

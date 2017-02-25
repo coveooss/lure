@@ -79,8 +79,8 @@ func main() {
 		c.String(http.StatusFound, "Linking with Bitbucket worked - get out and wait for an update")
 
 		go (func() {
-			checkForUpdatesJob(token, projects)
-			//checkForBranchDifferencesJob(token, projects, "staging", "default")
+			//checkForUpdatesJob(token, projects)
+			checkForBranchDifferencesJob(token, projects, "staging", "default")
 			os.Exit(0)
 		})()
 	})

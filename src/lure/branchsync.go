@@ -19,16 +19,16 @@ func checkForBranchDifferencesJob(token *oauth2.Token, projects []Project, fromB
 
 func checkForBranchDifferences(token *oauth2.Token, project Project, fromBranch string, toBranch string) (error) {
 
-	repoRemote, repoPath, err := cloneRepo(token, project)
+	repo, err := cloneRepo(token, project)
 	if err != nil {
 		return err
 	}
 
-	if _, err := hgUpdate(repoPath, toBranch); err != nil {
+	if _, err := repo.Update(toBranch); err != nil {
 		return err
 	}
 
-	commits, err := hgLogCommitsBetween(repoPath, toBranch, fromBranch)
+	commits, err := repo.LogCommitsBetween(toBranch, fromBranch)
 	if err != nil {
 		return err
 	}
@@ -41,19 +41,19 @@ func checkForBranchDifferences(token *oauth2.Token, project Project, fromBranch 
 
 	mergeBranch := "lure_merge_" + fromBranch + "_into_" + toBranch
 
-	if _, err := hgBranch(repoPath, mergeBranch); err != nil {
+	if _, err := repo.Branch(mergeBranch); err != nil {
 		return err
 	}
 
-	if _, err := hgMerge(repoPath, fromBranch); err != nil {
+	if _, err := repo.Merge(fromBranch); err != nil {
 		return err
 	}
 
-	if _, err := hgCommit(repoPath, fmt.Sprintf("merge %s into %s", fromBranch, toBranch)); err != nil {
+	if _, err := repo.Commit(fmt.Sprintf("merge %s into %s", fromBranch, toBranch)); err != nil {
 		return err
 	}
 
-	if _, err := hgPush(repoPath, repoRemote); err != nil {
+	if _, err := repo.Push(); err != nil {
 		return err
 	}
 

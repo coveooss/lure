@@ -20,10 +20,15 @@ type Source struct {
 	Branch Branch `json:"branch"`
 }
 
+type Dest struct {
+	Branch Branch `json:"branch"`
+}
+
 type PullRequest struct {
 	Title             string `json:"title"`
 	Description       string `json:"description"`
 	Source            Source `json:"source"`
+	Dest              Dest   `json:"dest"`
 	CloseSourceBranch bool   `json:"close_source_branch"`
 }
 
@@ -53,13 +58,18 @@ func getPullRequests(token string, username string, repoSlug string) []PullReque
 	return list.PullRequest
 }
 
-func createPullRequest(branch string, token string, owner string, repo string, title string, description string) {
+func createPullRequest(token string, sourceBranch string, destBranch string, owner string, repo string, title string, description string) (error) {
 	pr := PullRequest{
 		Title:       title,
 		Description: description,
 		Source: Source{
 			Branch: Branch{
-				Name: branch,
+				Name: sourceBranch,
+			},
+		},
+		Dest: Dest{
+			Branch: Branch{
+				Name: destBranch,
 			},
 		},
 		CloseSourceBranch: true,
@@ -70,13 +80,26 @@ func createPullRequest(branch string, token string, owner string, repo string, t
 	buf := &bytes.Buffer{}
 	json.NewEncoder(buf).Encode(&pr)
 
-	prRequest, _ := http.NewRequest("POST", url, buf)
+	prRequest, err := http.NewRequest("POST", url, buf)
+	if err != nil {
+		return err
+	}
+
 	prRequest.Header.Add("Content-Type", "application/json")
 	prRequest.Header.Add("Authorization", "Bearer "+token)
 
 	log.Printf("%s\n", prRequest)
-	resp, _ := http.DefaultClient.Do(prRequest)
+	resp, err := http.DefaultClient.Do(prRequest)
+	if err != nil {
+		return err
+	}
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
 	pp.Println(string(body))
+
+	return nil
 }

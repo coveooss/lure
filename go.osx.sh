@@ -1,6 +1,6 @@
 #!/bin/bash
 
 export GOPATH=$(pwd)
-export GOBIN=$GOPATH/bin
+export GOBIN=$(pwd)/bin
 
-go run *.go
+go run src/lure/*.go

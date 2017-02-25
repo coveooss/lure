@@ -15,6 +15,12 @@ See [bitbucket documentation](https://confluence.atlassian.com/bitbucket/oauth-o
 
 `BITBUCKET_REPO_OWNER` https ://bitbucket.org/**owner**/name
 
+`GOPATH`= project root
+
+## dependencies.
+
+`go get -v lure`
+
 ## test.
 
 ```sh

@@ -80,6 +80,7 @@ func main() {
 
 		go (func() {
 			checkForUpdatesJob(token, projects)
+			//checkForBranchDifferencesJob(token, projects, "staging", "default")
 			os.Exit(0)
 		})()
 	})

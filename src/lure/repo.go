@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"fmt"
 	"reflect"
+	"errors"
+	"bytes"
 
 	"github.com/k0kubun/pp"
 	"github.com/vsekhar/govtil/guid"
@@ -38,17 +40,11 @@ func appendIfMissing(modules []moduleVersion, modulesToAdd []moduleVersion) []mo
 	return modules
 }
 
-func updateProject(token *oauth2.Token, project Project) {
-
-	if token == nil {
-		pp.Printf("Error: \"Cant update no token\" %s", project)
-		return
-	}
-
+func cloneRepo(token *oauth2.Token, project Project) (string, string, error) {
 	repoGUID, err := guid.V4()
 	if err != nil {
 		log.Printf("Error: \"Could not generate guid\" %s", err)
-		return
+		return "", "", err
 	}
 	repoPath := "/tmp/" + repoGUID.String()
 
@@ -57,15 +53,31 @@ func updateProject(token *oauth2.Token, project Project) {
 	log.Printf("Info: cloning: %s to %s", projectRemote, repoPath)
 
 	repoRemote := "https://x-token-auth:" + token.AccessToken + "@" + projectRemote
-	if err := hgClone(repoRemote, repoPath); err != nil {
+	if _, err := hgClone(repoRemote, repoPath); err != nil {
 		log.Printf("Error: \"Could not clone\" %s", err)
-		return
+		return "", "", err
 	}
 
-	log.Printf("Info: switching %s to default branch: %s", projectRemote, project.DefaultBranch)
-	if err := hgUpdate(repoPath, project.DefaultBranch); err != nil {
-		log.Fatalf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err)
+	return repoRemote, repoPath, nil
+}
+
+func updateProject(token *oauth2.Token, project Project) (error) {
+
+	if token == nil {
+		return errors.New(fmt.Sprintf("Error: \"Cant update no token\" %s", project))
 	}
+
+
+	repoRemote, repoPath, err := cloneRepo(token, project)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Info: switching %s to default branch: %s", repoRemote, project.DefaultBranch)
+	if _, err := hgUpdate(repoPath, project.DefaultBranch); err != nil {
+		return errors.New(fmt.Sprintf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err))
+	}
+
 
 	modulesToUpdate := make([]moduleVersion, 0, 0)
 	modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repoPath))
@@ -75,6 +87,8 @@ func updateProject(token *oauth2.Token, project Project) {
 	for _, moduleToUpdate := range modulesToUpdate {
 		updateModule(token, moduleToUpdate, project, repoPath, repoRemote, pullRequests)
 	}
+
+	return nil
 }
 
 func updateModule(token *oauth2.Token, moduleToUpdate moduleVersion, project Project, repoPath string, repoRemote string, existingPRs []PullRequest) {
@@ -88,14 +102,14 @@ func updateModule(token *oauth2.Token, moduleToUpdate moduleVersion, project Pro
 	}
 
 	log.Printf("Info: switching %s to default branch: %s", repoPath, project.DefaultBranch)
-	if err := hgUpdate(repoPath, project.DefaultBranch); err != nil {
+	if _, err := hgUpdate(repoPath, project.DefaultBranch); err != nil {
 		log.Fatalf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err)
 	}
 
 	branchGUID, _ := guid.V4()
 	branch := hgSanitizeBranchName("lure-" + moduleToUpdate.Module + "-" + moduleToUpdate.Latest + "-" + branchGUID.String())
 	log.Printf("Creating branch %s\n", branch)
-	if err := hgBranch(repoPath, branch); err != nil {
+	if _, err := hgBranch(repoPath, branch); err != nil {
 		log.Printf("Error: \"Could not create branch\" %s", err)
 		return
 	}
@@ -105,29 +119,39 @@ func updateModule(token *oauth2.Token, moduleToUpdate moduleVersion, project Pro
 	case "npm": readPackageJSON(repoPath, moduleToUpdate.Module, moduleToUpdate.Latest)
 	}
 
-	if err := hgCommit(repoPath, "Update "+moduleToUpdate.Module+" to "+moduleToUpdate.Latest); err != nil {
+	if _, err := hgCommit(repoPath, "Update "+moduleToUpdate.Module+" to "+moduleToUpdate.Latest); err != nil {
 		log.Printf("Error: \"Could not commit\" %s", err)
 		return
 	}
 
 	log.Printf("Pushing changes\n")
-	if err := hgPush(repoPath, repoRemote); err != nil {
+	if _, err := hgPush(repoPath, repoRemote); err != nil {
 		log.Fatalf("Error: \"Could not push\" %s", err)
 		return
 	}
 
 	log.Printf("Creating PR\n")
 	description := fmt.Sprintf("%s version %s is now available! Please update.", moduleToUpdate.Module, moduleToUpdate.Latest)
-	createPullRequest(branch, token.AccessToken, project.Owner, project.Name, title, description)
+	createPullRequest(token.AccessToken, branch, project.DefaultBranch, project.Owner, project.Name, title, description)
 }
 
-func execute(pwd string, command string, params ...string) error {
+func execute(pwd string, command string, params ...string) (string, error) {
 	log.Printf("%s %q\n", command, params)
+
 	cmd := exec.Command(command, params...)
 	cmd.Dir = pwd
 
+	var buff bytes.Buffer
+	cmd.Stdout = &buff
+
 	if err := cmd.Run(); err != nil {
-		return err
+		return "", err
 	}
-	return nil
+
+	out := buff.String()
+
+	log.Printf("\t%s\n", out)
+
+
+	return out, nil
 }

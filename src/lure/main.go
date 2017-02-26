@@ -26,8 +26,8 @@ var (
 	}
 )
 
-func loadConfig() (*LureConfig, error) {
-	data, err := ioutil.ReadFile("lure.config")
+func loadConfig(filePath string) (*LureConfig, error) {
+	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -50,6 +50,7 @@ type Main func(config *LureConfig)
 
 func main() {
 	mode := flag.String("auth", "", "one of [oauth, env]")
+	confFile:= flag.String("config", "", "path to config file")
 
 	flag.Parse()
 
@@ -62,11 +63,11 @@ func main() {
 		log.Println("Using Environment Authentication")
 		mainFunc = mainWithEnvironmentAuth
 	default:
-		fmt.Printf("Invalid auth: %s", mode)
+		fmt.Printf("Invalid auth: %s", *mode)
 		os.Exit(1)
 	}
 
-	config, err := loadConfig()
+	config, err := loadConfig(*confFile)
 	if err != nil {
 		fmt.Printf("Error Loading Config: %s\n", err)
 		os.Exit(1)

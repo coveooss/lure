@@ -10,16 +10,15 @@ import (
 
 	"github.com/k0kubun/pp"
 	"github.com/vsekhar/govtil/guid"
-	"golang.org/x/oauth2"
 )
 
 // This part interesting
 // https://github.com/golang/go/blob/1441f76938bf61a2c8c2ed1a65082ddde0319633/src/cmd/go/vcs.go
 
-func checkForUpdatesJob(token *oauth2.Token, projects []Project) {
+func checkForUpdatesJob(auth Authentication, projects []Project) {
 	for _, project := range projects {
 		pp.Println("Updating Project: ", project.Owner + "/" + project.Name)
-		updateProject(token, project)
+		updateProject(auth, project)
 	}
 }
 
@@ -40,7 +39,7 @@ func appendIfMissing(modules []moduleVersion, modulesToAdd []moduleVersion) []mo
 	return modules
 }
 
-func cloneRepo(token *oauth2.Token, project Project) (HgRepo, error) {
+func cloneRepo(hgAuth Authentication, project Project) (HgRepo, error) {
 	repoGUID, err := guid.V4()
 
 	var repo HgRepo
@@ -50,12 +49,11 @@ func cloneRepo(token *oauth2.Token, project Project) (HgRepo, error) {
 	}
 	repoPath := "/tmp/" + repoGUID.String()
 
-	projectRemote := "bitbucket.org/" + project.Owner + "/" + project.Name
+	projectRemote := "https://bitbucket.org/" + project.Owner + "/" + project.Name
 
 	log.Printf("Info: cloning: %s to %s", projectRemote, repoPath)
 
-	repoRemote := "https://x-token-auth:" + token.AccessToken + "@" + projectRemote
-	repo, err = HgClone(repoRemote, repoPath)
+	repo, err = HgClone(hgAuth, projectRemote, repoPath)
 	if err != nil {
 		log.Printf("Error: \"Could not clone\" %s", err)
 		return repo, err
@@ -64,14 +62,9 @@ func cloneRepo(token *oauth2.Token, project Project) (HgRepo, error) {
 	return repo, nil
 }
 
-func updateProject(token *oauth2.Token, project Project) (error) {
+func updateProject(auth Authentication, project Project) (error) {
 
-	if token == nil {
-		return errors.New(fmt.Sprintf("Error: \"Cant update no token\" %s", project))
-	}
-
-
-	repo, err := cloneRepo(token, project)
+	repo, err := cloneRepo(auth, project)
 	if err != nil {
 		return err
 	}
@@ -85,16 +78,16 @@ func updateProject(token *oauth2.Token, project Project) (error) {
 	modulesToUpdate := make([]moduleVersion, 0, 0)
 	modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repo.localPath))
 	modulesToUpdate = appendIfMissing(modulesToUpdate, mvnOutdated(repo.localPath))
-	pullRequests := getPullRequests(token.AccessToken, project.Owner, project.Name)
+	pullRequests := getPullRequests(auth, project.Owner, project.Name)
 
 	for _, moduleToUpdate := range modulesToUpdate {
-		updateModule(token, moduleToUpdate, project, repo, pullRequests)
+		updateModule(auth, moduleToUpdate, project, repo, pullRequests)
 	}
 
 	return nil
 }
 
-func updateModule(token *oauth2.Token, moduleToUpdate moduleVersion, project Project, repo HgRepo, existingPRs []PullRequest) {
+func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Project, repo HgRepo, existingPRs []PullRequest) {
 
 	title := fmt.Sprintf("Update %s dependency %s to version %s", moduleToUpdate.Type, moduleToUpdate.Module, moduleToUpdate.Latest)
 	for _, pr := range existingPRs {
@@ -135,7 +128,7 @@ func updateModule(token *oauth2.Token, moduleToUpdate moduleVersion, project Pro
 
 	log.Printf("Creating PR\n")
 	description := fmt.Sprintf("%s version %s is now available! Please update.", moduleToUpdate.Module, moduleToUpdate.Latest)
-	createPullRequest(token.AccessToken, branch, project.DefaultBranch, project.Owner, project.Name, title, description)
+	createPullRequest(auth, branch, project.DefaultBranch, project.Owner, project.Name, title, description)
 }
 
 func execute(pwd string, command string, params ...string) (string, error) {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"io"
 	"log"
 	"bytes"
 	"encoding/json"
@@ -36,20 +37,41 @@ type PullRequestList struct {
 	PullRequest []PullRequest `json:"values"`
 }
 
-var apiURI = "https://api.bitbucket.org/2.0/repositories"
+var apiURI = "api.bitbucket.org/2.0/repositories"
 
-func getPullRequests(token string, username string, repoSlug string) []PullRequest {
+func createApiRequest(auth Authentication, method string, path string, body io.Reader) (*http.Request, error) {
+	var url = ""
+	switch auth := auth.(type) {
+	case UserPassAuth:
+		url = fmt.Sprintf("https://%s:%s@%s/%s", auth.username, auth.password, apiURI, path)
+	default:
+		url = fmt.Sprintf("https://%s/%s", apiURI, path)
+	}
+
+	request, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return request, err
+	}
+
+	switch auth := auth.(type) {
+	case TokenAuth:
+		request.Header.Add("Authorization", "Bearer " + auth.token)
+	}
+
+	return request, err
+}
+
+func getPullRequests(auth Authentication, username string, repoSlug string) []PullRequest {
 
 	acceptedStates := "state=OPEN"
 	if (os.Getenv("IGNORE_DECLINED_PR") != "1") {
 		acceptedStates += "&state=DECLINED"
 	}
 
-	url := fmt.Sprintf("%s/%s/%s/pullrequests/?%s", apiURI, username, repoSlug, acceptedStates)
+	url := fmt.Sprintf("https://%s/%s/%s/pullrequests/?%s", apiURI, username, repoSlug, acceptedStates)
 
-	prRequest, _ := http.NewRequest("GET", url, nil)
+	prRequest, _ := createApiRequest(auth, "GET", url, nil)
 	prRequest.Header.Add("Content-Type", "application/json")
-	prRequest.Header.Add("Authorization", "Bearer " + token)
 
 	resp, _ := http.DefaultClient.Do(prRequest)
 
@@ -58,7 +80,7 @@ func getPullRequests(token string, username string, repoSlug string) []PullReque
 	return list.PullRequest
 }
 
-func createPullRequest(token string, sourceBranch string, destBranch string, owner string, repo string, title string, description string) (error) {
+func createPullRequest(auth Authentication, sourceBranch string, destBranch string, owner string, repo string, title string, description string) (error) {
 	pr := PullRequest{
 		Title:       title,
 		Description: description,
@@ -75,18 +97,15 @@ func createPullRequest(token string, sourceBranch string, destBranch string, own
 		CloseSourceBranch: true,
 	}
 
-	url := fmt.Sprintf("%s/%s/%s/pullrequests/", apiURI, owner, repo)
-
 	buf := &bytes.Buffer{}
 	json.NewEncoder(buf).Encode(&pr)
 
-	prRequest, err := http.NewRequest("POST", url, buf)
+	prRequest, err := createApiRequest(auth, "POST", fmt.Sprintf("%s/%s/pullrequests/", owner, repo), buf)
 	if err != nil {
 		return err
 	}
 
 	prRequest.Header.Add("Content-Type", "application/json")
-	prRequest.Header.Add("Authorization", "Bearer "+token)
 
 	log.Printf("%s\n", prRequest)
 	resp, err := http.DefaultClient.Do(prRequest)

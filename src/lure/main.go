@@ -76,11 +76,23 @@ func main() {
 
 		pp.Println(token)
 
+		if token == nil {
+			respondWithError(http.StatusInternalServerError, "There was an error with the token exchange, no error, but no token either", c)
+			return
+		}
+
 		c.String(http.StatusFound, "Linking with Bitbucket worked - get out and wait for an update")
 
 		go (func() {
-			//checkForUpdatesJob(token, projects)
-			checkForBranchDifferencesJob(token, projects, "staging", "default")
+			auth := TokenAuth{token.AccessToken}
+
+			//auth := UserPassAuth{
+			//	username: "myUserName",
+			//	password: "8X9vFqlqpwUtHTQvemmo",
+			//}
+
+			//checkForUpdatesJob(auth, projects)
+			checkForBranchDifferencesJob(auth, projects, "staging", "default")
 			os.Exit(0)
 		})()
 	})

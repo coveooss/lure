@@ -5,12 +5,25 @@ import (
 	"strings"
 	"errors"
 	"fmt"
+	"os"
 )
 
+type Authentication interface {}
+
+type TokenAuth struct {
+	token string
+}
+
+type UserPassAuth struct {
+	username string
+	password string
+}
+
 type HgRepo struct {
-	localPath string
+	localPath  string
 	remotePath string
 
+	userPass   UserPassAuth
 }
 
 func HgSanitizeBranchName(name string) string {
@@ -19,10 +32,23 @@ func HgSanitizeBranchName(name string) string {
 	return safe
 }
 
-func HgClone(source string, to string) (HgRepo, error) {
+func HgClone(auth Authentication, source string, to string) (HgRepo, error) {
 	var repo HgRepo
 
-	if _, err := execute("", "hg", "clone", source, to); err != nil {
+	args := []string{ "clone", source, to }
+
+	switch auth := auth.(type) {
+	case TokenAuth:
+		source = strings.Replace(source, "://", fmt.Sprintf("://x-token-auth:%s@", auth.token) , 1)
+	case UserPassAuth:
+		args = append([]string{
+			"--config", "auth.repo.prefix=*",
+			"--config", "auth.repo.username=" + auth.username,
+			"--config", "auth.repo.password=" + auth.password,
+		}, args...)
+	}
+
+	if _, err := execute("", "hg", args...); err != nil {
 		return repo, err
 	}
 
@@ -30,11 +56,31 @@ func HgClone(source string, to string) (HgRepo, error) {
 		localPath: to,
 		remotePath: source,
 	}
+
+	switch auth := auth.(type) {
+	case UserPassAuth:
+		repo.SetUserPas(auth.username, auth.password)
+	}
+
 	return repo, nil
 }
 
 func (hgRepo *HgRepo) Hg(args ...string) (string, error) {
 	return execute(hgRepo.localPath, "hg", args...)
+}
+
+func (hgRepo *HgRepo) SetUserPas(user string, pass string) (error) {
+	f, err := os.OpenFile(fmt.Sprintf("%s/.hg/hgrc", hgRepo.localPath), os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		return err
+	}
+
+	f.WriteString("[auth]\n")
+	f.WriteString("repo.prefix=*\n")
+	f.WriteString(fmt.Sprintf("repo.username=%s\n", user))
+	f.WriteString(fmt.Sprintf("repo.password=%s\n", pass))
+	// keep credentials private
+	return f.Close()
 }
 
 func (hgRepo *HgRepo) Update(rev string) (string, error) {

@@ -5,21 +5,20 @@ import (
 	"log"
 
 	"github.com/k0kubun/pp"
-	"golang.org/x/oauth2"
 )
 
-func checkForBranchDifferencesJob(token *oauth2.Token, projects []Project, fromBranch string, toBranch string) {
+func checkForBranchDifferencesJob(auth Authentication, projects []Project, fromBranch string, toBranch string) {
 	for _, project := range projects {
 		pp.Println(fmt.Sprintf("Updating Project: %s/%s", project.Owner , project.Name))
-		if err := checkForBranchDifferences(token, project, fromBranch, toBranch); err != nil {
+		if err := checkForBranchDifferences(auth, project, fromBranch, toBranch); err != nil {
 			log.Fatal(err)
 		}
 	}
 }
 
-func checkForBranchDifferences(token *oauth2.Token, project Project, fromBranch string, toBranch string) (error) {
+func checkForBranchDifferences(auth Authentication, project Project, fromBranch string, toBranch string) (error) {
 
-	repo, err := cloneRepo(token, project)
+	repo, err := cloneRepo(auth, project)
 	if err != nil {
 		return err
 	}
@@ -57,7 +56,7 @@ func checkForBranchDifferences(token *oauth2.Token, project Project, fromBranch 
 		return err
 	}
 
-	if err := createPullRequest(token.AccessToken, mergeBranch, toBranch, project.Owner, project.Name, fmt.Sprintf("Merge %s into %s", fromBranch, toBranch), ""); err != nil {
+	if err := createPullRequest(auth, mergeBranch, toBranch, project.Owner, project.Name, fmt.Sprintf("Merge %s into %s", fromBranch, toBranch), ""); err != nil {
 		return err
 	}
 

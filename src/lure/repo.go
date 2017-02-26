@@ -8,19 +8,11 @@ import (
 	"errors"
 	"bytes"
 
-	"github.com/k0kubun/pp"
 	"github.com/vsekhar/govtil/guid"
 )
 
 // This part interesting
 // https://github.com/golang/go/blob/1441f76938bf61a2c8c2ed1a65082ddde0319633/src/cmd/go/vcs.go
-
-func checkForUpdatesJob(auth Authentication, projects []Project) {
-	for _, project := range projects {
-		pp.Println("Updating Project: ", project.Owner + "/" + project.Name)
-		updateProject(auth, project)
-	}
-}
 
 func appendIfMissing(modules []moduleVersion, modulesToAdd []moduleVersion) []moduleVersion {
 	for _, moduleToAdd := range modulesToAdd {
@@ -62,7 +54,11 @@ func cloneRepo(hgAuth Authentication, project Project) (HgRepo, error) {
 	return repo, nil
 }
 
-func updateProject(auth Authentication, project Project) (error) {
+func checkForUpdatesJobCommand(auth Authentication, project Project, args map[string]string) (error) {
+	return checkForUpdatesJob(auth, project)
+}
+
+func checkForUpdatesJob(auth Authentication, project Project) (error) {
 
 	repo, err := cloneRepo(auth, project)
 	if err != nil {

@@ -3,20 +3,23 @@ package main
 import (
 	"fmt"
 	"log"
-
-	"github.com/k0kubun/pp"
+	"errors"
 )
 
-func checkForBranchDifferencesJob(auth Authentication, projects []Project, fromBranch string, toBranch string) {
-	for _, project := range projects {
-		pp.Println(fmt.Sprintf("Updating Project: %s/%s", project.Owner , project.Name))
-		if err := checkForBranchDifferences(auth, project, fromBranch, toBranch); err != nil {
-			log.Fatal(err)
-		}
+func synchronizedBranchesCommand(auth Authentication, project Project, args map[string]string) (error) {
+	fromBranch, ok := args["from"]
+	if !ok {
+		return errors.New("Missing argument 'from'")
 	}
+	toBranch, ok := args["to"]
+	if !ok {
+		return errors.New("Missing argument 'to'")
+	}
+
+	return synchronizedBranches(auth, project, fromBranch, toBranch)
 }
 
-func checkForBranchDifferences(auth Authentication, project Project, fromBranch string, toBranch string) (error) {
+func synchronizedBranches(auth Authentication, project Project, fromBranch string, toBranch string) (error) {
 
 	repo, err := cloneRepo(auth, project)
 	if err != nil {
@@ -38,7 +41,7 @@ func checkForBranchDifferences(auth Authentication, project Project, fromBranch 
 	}
 	log.Printf("Found %d commits in %s missing from %s: %s\n", len(commits), fromBranch, toBranch, commits)
 
-	mergeBranch := "lure_merge_" + fromBranch + "_into_" + toBranch
+	mergeBranch := "lure_merge_" + fromBranch + "_into_" + toBranch + "_" + commits[len(commits)-1]
 
 	if _, err := repo.Branch(mergeBranch); err != nil {
 		return err

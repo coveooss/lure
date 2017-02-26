@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"log"
 	"io/ioutil"
 	"time"
 	"bytes"
+	"flag"
 
 	"github.com/gin-gonic/gin"
 	"github.com/k0kubun/pp"
@@ -42,15 +44,81 @@ func respondWithError(code int, message string, c *gin.Context) {
 
 	c.JSON(code, resp)
 }
+
+type CommandFunc func(auth Authentication, project Project, args map[string]string) error
+type Main func(config *LureConfig)
+
 func main() {
+	mode := flag.String("auth", "", "one of [oauth, env]")
+
+	flag.Parse()
+
+	var mainFunc Main = nil
+	switch *mode {
+	case "oauth":
+		log.Println("Using OAuth Authentication")
+		mainFunc = mainWithOAuth
+	case "env":
+		log.Println("Using Environment Authentication")
+		mainFunc = mainWithEnvironmentAuth
+	default:
+		fmt.Printf("Invalid auth: %s", mode)
+		os.Exit(1)
+	}
 
 	config, err := loadConfig()
 	if err != nil {
 		fmt.Printf("Error Loading Config: %s\n", err)
-		return
+		os.Exit(1)
 	}
 	fmt.Printf("Config: %s\n", config)
-	projects := config.Projects
+
+	mainFunc(config)
+}
+
+func getCommand(commandName string) CommandFunc {
+	var commandFunc CommandFunc = nil
+
+	switch commandName {
+	case "updateDependencies":
+		commandFunc = checkForUpdatesJobCommand
+	case "synchronizedBranches":
+		commandFunc = synchronizedBranchesCommand
+	}
+
+	return commandFunc
+}
+
+func runMain(config *LureConfig, auth Authentication) {
+	for _, project := range config.Projects {
+		log.Println(fmt.Sprintf("Project: %s/%s", project.Owner , project.Name))
+
+		for _, command := range project.Commands {
+			log.Println(fmt.Sprintf("\tCommand: %s", command.Name))
+			commandFunc := getCommand(command.Name)
+
+			if commandFunc == nil {
+				log.Println(fmt.Sprintf("\tSkipping invalid command: %s", command.Name))
+			} else {
+				if err := commandFunc(auth, project, command.Args); err != nil {
+					log.Println(fmt.Sprintf("\tCommand failed: %s", err))
+				}
+			}
+		}
+	}
+}
+
+func mainWithEnvironmentAuth(config *LureConfig) {
+
+	auth := UserPassAuth{
+		username: os.Getenv("BITBUCKET_USERNAME"),
+		password: os.Getenv("BITBUCKET_PASSWORD"),
+	}
+
+	runMain(config, auth)
+}
+
+func mainWithOAuth(config *LureConfig) {
 
 	r := gin.Default()
 	r.GET("/login", func(c *gin.Context) {
@@ -86,13 +154,7 @@ func main() {
 		go (func() {
 			auth := TokenAuth{token.AccessToken}
 
-			//auth := UserPassAuth{
-			//	username: "myUserName",
-			//	password: "8X9vFqlqpwUtHTQvemmo",
-			//}
-
-			//checkForUpdatesJob(auth, projects)
-			checkForBranchDifferencesJob(auth, projects, "staging", "default")
+			runMain(config, auth)
 			os.Exit(0)
 		})()
 	})

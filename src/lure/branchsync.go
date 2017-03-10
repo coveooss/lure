@@ -26,7 +26,7 @@ func synchronizedBranches(auth Authentication, project Project, fromBranch strin
 		return err
 	}
 
-	if _, err := repo.Update(toBranch); err != nil {
+	if _, err := repo.Update(fromBranch); err != nil {
 		return err
 	}
 

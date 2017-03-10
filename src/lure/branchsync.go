@@ -47,10 +47,6 @@ func synchronizedBranches(auth Authentication, project Project, fromBranch strin
 		return err
 	}
 
-	if _, err := repo.Merge(fromBranch); err != nil {
-		return err
-	}
-
 	if _, err := repo.Commit(fmt.Sprintf("merge %s into %s", fromBranch, toBranch)); err != nil {
 		return err
 	}

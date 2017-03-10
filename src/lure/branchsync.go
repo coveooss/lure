@@ -26,7 +26,7 @@ func synchronizedBranches(auth Authentication, project Project, fromBranch strin
 		return err
 	}
 
-	if _, err := repo.Update(toBranch); err != nil {
+	if _, err := repo.Update(fromBranch); err != nil {
 		return err
 	}
 
@@ -44,10 +44,6 @@ func synchronizedBranches(auth Authentication, project Project, fromBranch strin
 	mergeBranch := "lure_merge_" + fromBranch + "_into_" + toBranch + "_" + commits[len(commits)-1]
 
 	if _, err := repo.Branch(mergeBranch); err != nil {
-		return err
-	}
-
-	if _, err := repo.Merge(fromBranch); err != nil {
 		return err
 	}
 

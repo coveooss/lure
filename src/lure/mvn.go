@@ -25,22 +25,29 @@ func mvnOutdated(path string) []moduleVersion {
 	reader := bytes.NewReader(out.Bytes())
 	scanner := bufio.NewScanner(reader)
 
-	//mvnRegex, _ := regexp.Compile(`\s*\[INFO\]\s+((?:[a-zA-Z0-9$_-]\.?))+:((?:[a-zA-Z0-9$_-]\.?))\s+\.{34}\s+((?:[a-zA-Z0-9$_-]\.?))\s+->\s+((?:[a-zA-Z0-9$_-]\.?))\s*`)
-	mvnRegex, _ := regexp.Compile(`\s*\[INFO\]\s+((?:[a-zA-Z0-9$_-]\.?)+):((?:[a-zA-Z0-9$_-]\.?)+)\s+\.+\s+((?:[a-zA-Z0-9$_-]\.?)+)\s+->\s+((?:[a-zA-Z0-9$_-]\.?)+)\s*`)
+	mvnPackageRegex, _ := regexp.Compile(`\s*\[INFO\]\s+((?:[a-zA-Z0-9$_-]\.?)+):((?:[a-zA-Z0-9$_-]\.?)+)\s+`)
+	mvnVersionRegex, _ := regexp.Compile(`((?:[a-zA-Z0-9$_-]\.?)+)\s+->\s+((?:[a-zA-Z0-9$_-]\.?)+)\s*`)
 
 	version := make([]moduleVersion, 0, 0)
+	var lastPackage []string
 	for scanner.Scan() {
-		result := mvnRegex.FindStringSubmatch(scanner.Text())
-		fmt.Printf("> %s - %q\n", scanner.Text(), result)
-		if result != nil {
+		fmt.Printf("> %s\n", scanner.Text())
+		packageName := mvnPackageRegex.FindStringSubmatch(scanner.Text())
+		if(packageName != nil) {
+			lastPackage = packageName
+		}
+
+		packageVersion := mvnVersionRegex.FindStringSubmatch(scanner.Text())
+		if (packageVersion != nil) {
+
+			fmt.Printf(">%q - %q\n", packageName, packageVersion)
 			mv := moduleVersion{
 				Type: "maven",
-				Module:  result[1] + ":" + result[2],
-				Current: result[3],
-				Wanted:  result[4],
-				Latest:  result[4],
+				Module:  lastPackage[1] + ":" + lastPackage[2],
+				Current: packageVersion[1],
+				Wanted:  packageVersion[2],
+				Latest:  packageVersion[2],
 			}
-
 			pp.Println(mv)
 			version = append(version, mv)
 		}

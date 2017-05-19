@@ -6,9 +6,14 @@ import (
 	"log"
 	"os/exec"
 	"regexp"
+	"encoding/xml"
 
 	"github.com/k0kubun/pp"
 	"fmt"
+	"os"
+	"io/ioutil"
+	"strings"
+	"launchpad.net/xmlpath"
 )
 
 func mvnOutdated(path string) []moduleVersion {
@@ -56,7 +61,150 @@ func mvnOutdated(path string) []moduleVersion {
 	return version
 }
 
-func mvnUpdateDep(path string, dependency string, version string) error {
+type project struct {
+	ModelVersion string `xml:"modelVersion"`
+	Dependencies []struct {
+		ArtifactId string `xml:"artifactId"`
+		GroupId string `xml:"groupId"`
+		Version string `xml:"version"`
+	} `xml:"dependencies>dependency"`
+}
+
+type property struct {
+
+}
+
+
+func mvnUpdateDep(path string, mver moduleVersion) error { //dependency string, version string)
+	dependency := mver.Module
+	version := mver.Latest
+	// error {
+	//list all folder with pom.xml
+	cmd := exec.Command("mvn",  "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
+	var out bytes.Buffer
+	var stree bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stree
+	cmd.Dir = path
+	err := cmd.Run()
+
+	if err != nil {
+		fmt.Println(err)
+		log.Fatal(err)
+	}
+
+	reader := bytes.NewReader(out.Bytes())
+	scanner := bufio.NewScanner(reader)
+
+	var folders []string
+	for scanner.Scan() {
+		fmt.Printf(scanner.Text())
+		folders = append(folders, scanner.Text())
+	}
+
+	isProperty, _ := regexp.Compile(`\$\{[\w.-]+}`)
+	var propertyToReplace string
+
+	for _, folder := range folders {
+		xmlFile, err := os.Open(folder + "/pom.xml")
+		if err != nil {
+			fmt.Println("Error opening file:", err)
+			return err
+		}
+		defer xmlFile.Close()
+
+		b, _ := ioutil.ReadAll(xmlFile)
+
+		var mvnProject project
+		xml.Unmarshal(b, &mvnProject)
+
+		//fmt.Println(dependencies.dependency)
+		fmt.Println(mvnProject)
+		for _, dep := range mvnProject.Dependencies {
+			if(isProperty.MatchString(dep.Version) &&
+				dependency == (dep.GroupId + ":" + dep.ArtifactId)) {
+				fmt.Println("%s : %s : %s", folder, dep.ArtifactId, dep.Version)
+				propertyToReplace = strings.TrimRight(strings.TrimLeft(dep.Version, "${"), "}")
+
+				for _, folder2 := range folders {
+					xmlFile, err := os.Open(folder2 + "/pom.xml")
+					if err != nil {
+						fmt.Println("Error opening file:", err)
+						return err
+					}
+					defer xmlFile.Close()
+
+					path := xmlpath.MustCompile("/project/properties/" +
+						propertyToReplace)
+					root, err := xmlpath.Parse(xmlFile)
+					if err != nil {
+						log.Fatal(err)
+					}
+					if _, ok := path.String(root); ok {
+						b, _ := ioutil.ReadFile(folder2 + "/pom.xml")
+						newContent := strings.Replace(string(b), "<" +
+							propertyToReplace + ">" + mver.Current +
+							"</" + propertyToReplace + ">",
+							"<" + propertyToReplace + ">" +
+								version +
+							"</" + propertyToReplace + ">", -1)
+
+						err = ioutil.WriteFile(folder2 + "/pom.xml", []byte(newContent), 0)
+						if err != nil {
+							panic(err)
+						}
+
+					}
+				}
+
+				//result = execute(path, "mvn", "versions:update-property",
+				//	"-Dproperty=" +
+				//		strings.TrimRight(strings.TrimLeft(dep.Version, "${"), "}"),
+				//	//i am so sorry
+				//	"-DnewValue=" + version)
+			}
+		}
+	}
+
+	//if (propertyToReplace != nil) {
+	//	for _, folder := range folders {
+	//		xmlFile, err := os.Open(folder + "/pom.xml")
+	//		if err != nil {
+	//			fmt.Println("Error opening file:", err)
+	//			return err
+	//		}
+	//		defer xmlFile.Close()
+	//
+	//		b, _ := ioutil.ReadAll(xmlFile)
+	//
+	//		path := xmlpath.MustCompile("/project/" + propertyToReplace)
+	//		root, err := xmlpath.Parse(b)
+	//		if err != nil {
+	//			log.Fatal(err)
+	//		}
+	//		if value, ok := path.String(root); ok {
+	//			fmt.Println("Found:", value)
+	//		}
+	//
+	//		var mvnProject project
+	//		xml.Unmarshal(b, &mvnProject)
+	//
+	//		//fmt.Println(dependencies.dependency)
+	//		fmt.Println(mvnProject)
+	//		for _, dep := range mvnProject.Dependencies {
+	//			if(isProperty.MatchString(dep.Version) &&
+	//				dependency == (dep.GroupId + ":" + dep.ArtifactId)) {
+	//				fmt.Println("%s : %s : %s", folder, dep.ArtifactId, dep.Version)
+	//				result = execute(path, "mvn", "versions:update-property",
+	//					"-Dproperty=" +
+	//						strings.TrimRight(strings.TrimLeft(dep.Version, "${"), "}"),
+	//					//i am so sorry
+	//					"-DnewVersion=" + version)
+	//			}
+	//		}
+	//	}
+	//}
+
 	_, err := execute(path, "mvn", "versions:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
 	return err
 }

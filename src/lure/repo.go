@@ -115,7 +115,7 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 	}
 
 	switch moduleToUpdate.Type {
-	case "maven": mvnUpdateDep(repo.LocalPath(), moduleToUpdate.Module, moduleToUpdate.Latest)
+	case "maven": mvnUpdateDep(repo.LocalPath(), moduleToUpdate)
 	case "npm": readPackageJSON(repo.LocalPath(), moduleToUpdate.Module, moduleToUpdate.Latest)
 	}
 

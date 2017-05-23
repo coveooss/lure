@@ -80,8 +80,8 @@ func checkForUpdatesJob(auth Authentication, project Project) (error) {
 
 
 	modulesToUpdate := make([]moduleVersion, 0, 0)
-	modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repo.LocalPath()))
-	modulesToUpdate = appendIfMissing(modulesToUpdate, mvnOutdated(repo.LocalPath()))
+	modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repo.LocalPath() + "/" + project.BasePath))
+	modulesToUpdate = appendIfMissing(modulesToUpdate, mvnOutdated(repo.LocalPath() + "/" + project.BasePath))
 	pullRequests := getPullRequests(auth, project.Owner, project.Name)
 
 	for _, moduleToUpdate := range modulesToUpdate {

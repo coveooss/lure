@@ -108,17 +108,20 @@ func createPullRequest(auth Authentication, sourceBranch string, destBranch stri
 	prRequest.Header.Add("Content-Type", "application/json")
 
 	log.Printf("%s\n", prRequest)
-	resp, err := http.DefaultClient.Do(prRequest)
-	if err != nil {
-		return err
+	if (os.Getenv("DRY_RUN") == "1") {
+		log.Println("Running in DryRun mode, not doing the request")
+	} else {
+		resp, err := http.DefaultClient.Do(prRequest)
+		if err != nil {
+			return err
+		}
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+
+		pp.Println(string(body))
 	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	pp.Println(string(body))
-
 	return nil
 }

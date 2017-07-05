@@ -29,7 +29,7 @@ type PullRequest struct {
 	Title             string `json:"title"`
 	Description       string `json:"description"`
 	Source            Source `json:"source"`
-	Dest              Dest   `json:"dest"`
+	Dest              Dest   `json:"destination"`
 	CloseSourceBranch bool   `json:"close_source_branch"`
 }
 

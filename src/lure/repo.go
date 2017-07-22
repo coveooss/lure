@@ -31,10 +31,10 @@ func appendIfMissing(modules []moduleVersion, modulesToAdd []moduleVersion) []mo
 	return modules
 }
 
-func cloneRepo(hgAuth Authentication, project Project) (HgRepo, error) {
+func cloneRepo(hgAuth Authentication, project Project) (Repo, error) {
 	repoGUID, err := guid.V4()
 
-	var repo HgRepo
+	var repo Repo
 	if err != nil {
 		log.Printf("Error: \"Could not generate guid\" %s", err)
 		return repo, err
@@ -45,7 +45,15 @@ func cloneRepo(hgAuth Authentication, project Project) (HgRepo, error) {
 
 	log.Printf("Info: cloning: %s to %s", projectRemote, repoPath)
 
-	repo, err = HgClone(hgAuth, projectRemote, repoPath)
+	switch project.Vcs {
+	case Hg:
+		repo, err = HgClone(hgAuth, projectRemote, repoPath)
+	case Git:
+		repo, err = GitClone(hgAuth, projectRemote, repoPath)
+	default:
+		repo = nil
+		err = errors.New(fmt.Sprintf("Unknown VCS '%s' - must be one of %s, %s", project.Vcs, Git, Hg))
+	}
 	if err != nil {
 		log.Printf("Error: \"Could not clone\" %s", err)
 		return repo, err
@@ -65,15 +73,15 @@ func checkForUpdatesJob(auth Authentication, project Project) (error) {
 		return err
 	}
 
-	log.Printf("Info: switching %s to default branch: %s", repo.remotePath, project.DefaultBranch)
+	log.Printf("Info: switching %s to default branch: %s", repo.RemotePath(), project.DefaultBranch)
 	if _, err := repo.Update(project.DefaultBranch); err != nil {
 		return errors.New(fmt.Sprintf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err))
 	}
 
 
 	modulesToUpdate := make([]moduleVersion, 0, 0)
-	modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repo.localPath))
-	modulesToUpdate = appendIfMissing(modulesToUpdate, mvnOutdated(repo.localPath))
+	modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repo.LocalPath()))
+	modulesToUpdate = appendIfMissing(modulesToUpdate, mvnOutdated(repo.LocalPath()))
 	pullRequests := getPullRequests(auth, project.Owner, project.Name)
 
 	for _, moduleToUpdate := range modulesToUpdate {
@@ -83,7 +91,7 @@ func checkForUpdatesJob(auth Authentication, project Project) (error) {
 	return nil
 }
 
-func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Project, repo HgRepo, existingPRs []PullRequest) {
+func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Project, repo Repo, existingPRs []PullRequest) {
 
 	title := fmt.Sprintf("Update %s dependency %s to version %s", moduleToUpdate.Type, moduleToUpdate.Module, moduleToUpdate.Latest)
 	for _, pr := range existingPRs {
@@ -93,7 +101,7 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 		}
 	}
 
-	log.Printf("Info: switching %s to default branch: %s", repo.localPath, project.DefaultBranch)
+	log.Printf("Info: switching %s to default branch: %s", repo.LocalPath(), project.DefaultBranch)
 	if _, err := repo.Update(project.DefaultBranch); err != nil {
 		log.Fatalf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err)
 	}
@@ -107,8 +115,8 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 	}
 
 	switch moduleToUpdate.Type {
-	case "maven": mvnUpdateDep(repo.localPath, moduleToUpdate.Module, moduleToUpdate.Latest)
-	case "npm": readPackageJSON(repo.localPath, moduleToUpdate.Module, moduleToUpdate.Latest)
+	case "maven": mvnUpdateDep(repo.LocalPath(), moduleToUpdate.Module, moduleToUpdate.Latest)
+	case "npm": readPackageJSON(repo.LocalPath(), moduleToUpdate.Module, moduleToUpdate.Latest)
 	}
 
 	if _, err := repo.Commit("Update "+moduleToUpdate.Module+" to "+moduleToUpdate.Latest); err != nil {

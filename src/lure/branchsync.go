@@ -26,6 +26,11 @@ func synchronizedBranches(auth Authentication, project Project, fromBranch strin
 		return err
 	}
 
+	// if git, setup a tracking branch to avoid having to prefix origin/ later
+	if _, err := repo.Update(toBranch); err != nil {
+		return err
+	}
+
 	if _, err := repo.Update(fromBranch); err != nil {
 		return err
 	}
@@ -47,8 +52,12 @@ func synchronizedBranches(auth Authentication, project Project, fromBranch strin
 		return err
 	}
 
-	if _, err := repo.Commit(fmt.Sprintf("merge %s into %s", fromBranch, toBranch)); err != nil {
-		return err
+	// hg requires a commit in order to create a branch
+	switch repo := repo.(type) {
+	case HgRepo:
+		if _, err := repo.Commit(fmt.Sprintf("merge %s into %s", fromBranch, toBranch)); err != nil {
+			return err
+		}
 	}
 
 	if _, err := repo.Push(); err != nil {

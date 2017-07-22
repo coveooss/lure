@@ -8,22 +8,9 @@ import (
 	"os"
 )
 
-type Authentication interface {}
-
-type TokenAuth struct {
-	token string
-}
-
-type UserPassAuth struct {
-	username string
-	password string
-}
-
 type HgRepo struct {
 	localPath  string
 	remotePath string
-
-	userPass   UserPassAuth
 }
 
 func HgSanitizeBranchName(name string) string {
@@ -65,11 +52,19 @@ func HgClone(auth Authentication, source string, to string) (HgRepo, error) {
 	return repo, nil
 }
 
-func (hgRepo *HgRepo) Hg(args ...string) (string, error) {
+func (hgRepo HgRepo) LocalPath() string {
+	return hgRepo.localPath
+}
+
+func (hgRepo HgRepo) RemotePath() string {
+	return hgRepo.remotePath
+}
+
+func (hgRepo HgRepo) Cmd(args ...string) (string, error) {
 	return execute(hgRepo.localPath, "hg", args...)
 }
 
-func (hgRepo *HgRepo) SetUserPas(user string, pass string) (error) {
+func (hgRepo HgRepo) SetUserPas(user string, pass string) (error) {
 	f, err := os.OpenFile(fmt.Sprintf("%s/.hg/hgrc", hgRepo.localPath), os.O_APPEND|os.O_WRONLY, 0)
 	if err != nil {
 		return err
@@ -83,36 +78,36 @@ func (hgRepo *HgRepo) SetUserPas(user string, pass string) (error) {
 	return f.Close()
 }
 
-func (hgRepo *HgRepo) Update(rev string) (string, error) {
-	return hgRepo.Hg("update", rev)
+func (hgRepo HgRepo) Update(rev string) (string, error) {
+	return hgRepo.Cmd("update", rev)
 }
 
-func (hgRepo *HgRepo) Branch(branchname string) (string, error) {
-	return hgRepo.Hg("branch", HgSanitizeBranchName(branchname))
+func (hgRepo HgRepo) Branch(branchname string) (string, error) {
+	return hgRepo.Cmd("branch", HgSanitizeBranchName(branchname))
 }
 
-func (hgRepo *HgRepo) Commit(message string) (string, error) {
-	return hgRepo.Hg("commit", "-m", message)
+func (hgRepo HgRepo) Commit(message string) (string, error) {
+	return hgRepo.Cmd("commit", "-m", message)
 }
 
-func (hgRepo *HgRepo) Merge(branch string) (string, error) {
-	_, err := hgRepo.Hg("merge", branch)
+func (hgRepo HgRepo) Merge(branch string) (string, error) {
+	_, err := hgRepo.Cmd("merge", branch)
 	if err != nil {
 		return "", errors.New(fmt.Sprintf("Error: \"Could not merge %s into current branch\" %s", branch, err.Error()))
 	}
 	return "", nil
 }
 
-func (hgRepo *HgRepo) Push() (string, error) {
-	return hgRepo.Hg("push", "--new-branch", hgRepo.remotePath)
+func (hgRepo HgRepo) Push() (string, error) {
+	return hgRepo.Cmd("push", "--new-branch", hgRepo.remotePath)
 }
 
-func (hgRepo *HgRepo) PushDefault() (string, error) {
-	return hgRepo.Hg("push", "--new-branch")
+func (hgRepo HgRepo) PushDefault() (string, error) {
+	return hgRepo.Cmd("push", "--new-branch")
 }
 
-func (hgRepo *HgRepo) LogCommitsBetween(baseRev string, secondRev string) ([]string, error) {
-	out, err := hgRepo.Hg("log", "-r", "ancestors(" + secondRev + ") and not ancestors(" + baseRev + ")", "--template", "{node}\n")
+func (hgRepo HgRepo) LogCommitsBetween(baseRev string, secondRev string) ([]string, error) {
+	out, err := hgRepo.Cmd("log", "-r", "ancestors(" + secondRev + ") and not ancestors(" + baseRev + ")", "--template", "{node}\n")
 	if err != nil {
 		return []string{}, err
 	}

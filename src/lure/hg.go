@@ -27,6 +27,7 @@ func HgClone(auth Authentication, source string, to string) (HgRepo, error) {
 	switch auth := auth.(type) {
 	case TokenAuth:
 		source = strings.Replace(source, "://", fmt.Sprintf("://x-token-auth:%s@", auth.token) , 1)
+		args = []string{ "clone", source, to }
 	case UserPassAuth:
 		args = append([]string{
 			"--config", "auth.repo.prefix=*",

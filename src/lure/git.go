@@ -4,7 +4,6 @@ import (
 	"regexp"
 	"strings"
 	"fmt"
-	"log"
 )
 
 type GitRepo struct {

@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strings"
 	"fmt"
+	"log"
 )
 
 type GitRepo struct {
@@ -22,14 +23,14 @@ func GitSanitizeBranchName(name string) string {
 func GitClone(auth Authentication, source string, to string) (GitRepo, error) {
 	var repo GitRepo
 
-	args := []string{ "clone", source, to }
-
 	switch auth := auth.(type) {
 	case TokenAuth:
 		source = strings.Replace(source, "://", fmt.Sprintf("://x-token-auth:%s@", auth.token) , 1)
 	case UserPassAuth:
 		source = strings.Replace(source, "://", fmt.Sprintf("://%s:%s@", auth.username, auth.password) , 1)
 	}
+
+	args := []string{ "clone", source, to }
 
 	if _, err := execute("", "git", args...); err != nil {
 		return repo, err

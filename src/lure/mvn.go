@@ -78,7 +78,7 @@ type property struct {
 func mvnUpdateDep(path string, mver moduleVersion) error { //dependency string, version string)
 	dependency := mver.Module
 	version := mver.Latest
-	// error {
+
 	//list all folder with pom.xml
 	cmd := exec.Command("mvn",  "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
 	var out bytes.Buffer
@@ -118,11 +118,8 @@ func mvnUpdateDep(path string, mver moduleVersion) error { //dependency string, 
 		var mvnProject project
 		xml.Unmarshal(b, &mvnProject)
 
-		//fmt.Println(dependencies.dependency)
-		fmt.Println(mvnProject)
 		for _, dep := range mvnProject.Dependencies {
-			if(isProperty.MatchString(dep.Version) &&
-				dependency == (dep.GroupId + ":" + dep.ArtifactId)) {
+			if isProperty.MatchString(dep.Version) && dependency == (dep.GroupId + ":" + dep.ArtifactId) {
 				fmt.Println("%s : %s : %s", folder, dep.ArtifactId, dep.Version)
 				propertyToReplace = strings.TrimRight(strings.TrimLeft(dep.Version, "${"), "}")
 
@@ -156,55 +153,9 @@ func mvnUpdateDep(path string, mver moduleVersion) error { //dependency string, 
 
 					}
 				}
-
-				//result = execute(path, "mvn", "versions:update-property",
-				//	"-Dproperty=" +
-				//		strings.TrimRight(strings.TrimLeft(dep.Version, "${"), "}"),
-				//	//i am so sorry
-				//	"-DnewValue=" + version)
 			}
 		}
 	}
-
-	//if (propertyToReplace != nil) {
-	//	for _, folder := range folders {
-	//		xmlFile, err := os.Open(folder + "/pom.xml")
-	//		if err != nil {
-	//			fmt.Println("Error opening file:", err)
-	//			return err
-	//		}
-	//		defer xmlFile.Close()
-	//
-	//		b, _ := ioutil.ReadAll(xmlFile)
-	//
-	//		path := xmlpath.MustCompile("/project/" + propertyToReplace)
-	//		root, err := xmlpath.Parse(b)
-	//		if err != nil {
-	//			log.Fatal(err)
-	//		}
-	//		if value, ok := path.String(root); ok {
-	//			fmt.Println("Found:", value)
-	//		}
-	//
-	//		var mvnProject project
-	//		xml.Unmarshal(b, &mvnProject)
-	//
-	//		//fmt.Println(dependencies.dependency)
-	//		fmt.Println(mvnProject)
-	//		for _, dep := range mvnProject.Dependencies {
-	//			if(isProperty.MatchString(dep.Version) &&
-	//				dependency == (dep.GroupId + ":" + dep.ArtifactId)) {
-	//				fmt.Println("%s : %s : %s", folder, dep.ArtifactId, dep.Version)
-	//				result = execute(path, "mvn", "versions:update-property",
-	//					"-Dproperty=" +
-	//						strings.TrimRight(strings.TrimLeft(dep.Version, "${"), "}"),
-	//					//i am so sorry
-	//					"-DnewVersion=" + version)
-	//			}
-	//		}
-	//	}
-	//}
-
 	_, err := execute(path, "mvn", "versions:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
 	return err
 }

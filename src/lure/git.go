@@ -64,6 +64,10 @@ func (gitRepo GitRepo) Branch(branchname string) (string, error) {
 }
 
 func (gitRepo GitRepo) Commit(message string) (string, error) {
+	add, err := gitRepo.Cmd("add", "--all")
+	if err != nil {
+		return add, err
+	}
 	return gitRepo.Cmd("commit", "-m", message)
 }
 

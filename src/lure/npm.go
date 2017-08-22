@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"os/exec"
 	"regexp"
 
@@ -18,13 +17,11 @@ type packageJSON map[string]interface{}
 func npmOutdated(path string) []moduleVersion {
 	cmd := exec.Command("npm", "outdated")
 	var out bytes.Buffer
+	var errStrm bytes.Buffer
 	cmd.Stdout = &out
+	cmd.Stderr = &errStrm
 	cmd.Dir = path
-	err := cmd.Run()
-
-	if err != nil {
-		log.Fatal(err)
-	}
+	cmd.Run()
 
 	reader := bytes.NewReader(out.Bytes())
 	scanner := bufio.NewScanner(reader)

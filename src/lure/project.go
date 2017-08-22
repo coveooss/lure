@@ -7,9 +7,10 @@ type Command struct {
 
 type Project struct {
 	Vcs		  string    `json:"vcs"`
-	Owner		  string    `json:"owner"`
-	Name		  string    `json:"name"`
-	DefaultBranch 	  string    `json:"defaultBranch"`
+	Owner		  string `json:"owner"`
+	Name		  string `json:"name"`
+	DefaultBranch 	  string `json:"defaultBranch"`
+	BasePath	  string `json:"basePath"`
 	Commands 	  []Command `json:"commands"`
 }
 

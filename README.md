@@ -15,6 +15,8 @@ See [bitbucket documentation](https://confluence.atlassian.com/bitbucket/oauth-o
 
 `BITBUCKET_REPO_OWNER` https ://bitbucket.org/**owner**/name
 
+`DRY_RUN` won't create a PR
+
 `GOPATH`= project root
 
 ## dependencies.

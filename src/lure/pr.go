@@ -108,6 +108,7 @@ func createPullRequest(auth Authentication, sourceBranch string, destBranch stri
 	prRequest.Header.Add("Content-Type", "application/json")
 
 	log.Printf("%s\n", prRequest)
+
 	resp, err := http.DefaultClient.Do(prRequest)
 	if err != nil {
 		return err
@@ -119,6 +120,5 @@ func createPullRequest(auth Authentication, sourceBranch string, destBranch stri
 	}
 
 	pp.Println(string(body))
-
 	return nil
 }

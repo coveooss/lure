@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"errors"
+	"os"
 )
 
 func synchronizedBranchesCommand(auth Authentication, project Project, args map[string]string) (error) {
@@ -60,12 +61,16 @@ func synchronizedBranches(auth Authentication, project Project, fromBranch strin
 		}
 	}
 
-	if _, err := repo.Push(); err != nil {
-		return err
-	}
+	if os.Getenv("DRY_RUN") == "1" {
+		log.Println("Running in DryRun mode, not doing the pull request nor pushing the changes")
+	} else {
+		if _, err := repo.Push(); err != nil {
+			return err
+		}
 
-	if err := createPullRequest(auth, mergeBranch, toBranch, project.Owner, project.Name, fmt.Sprintf("Merge %s into %s", fromBranch, toBranch), ""); err != nil {
-		return err
+		if err := createPullRequest(auth, mergeBranch, toBranch, project.Owner, project.Name, fmt.Sprintf("Merge %s into %s", fromBranch, toBranch), ""); err != nil {
+			return err
+		}
 	}
 
 	return nil

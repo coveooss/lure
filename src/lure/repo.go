@@ -9,6 +9,7 @@ import (
 	"bytes"
 
 	"github.com/vsekhar/govtil/guid"
+	"os"
 )
 
 // This part interesting
@@ -80,8 +81,8 @@ func checkForUpdatesJob(auth Authentication, project Project) (error) {
 
 
 	modulesToUpdate := make([]moduleVersion, 0, 0)
-	modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repo.LocalPath()))
-	modulesToUpdate = appendIfMissing(modulesToUpdate, mvnOutdated(repo.LocalPath()))
+	modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repo.LocalPath() + "/" + project.BasePath))
+	modulesToUpdate = appendIfMissing(modulesToUpdate, mvnOutdated(repo.LocalPath() + "/" + project.BasePath))
 	pullRequests := getPullRequests(auth, project.Owner, project.Name)
 
 	for _, moduleToUpdate := range modulesToUpdate {
@@ -115,7 +116,7 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 	}
 
 	switch moduleToUpdate.Type {
-	case "maven": mvnUpdateDep(repo.LocalPath(), moduleToUpdate.Module, moduleToUpdate.Latest)
+	case "maven": mvnUpdateDep(repo.LocalPath(), moduleToUpdate)
 	case "npm": readPackageJSON(repo.LocalPath(), moduleToUpdate.Module, moduleToUpdate.Latest)
 	}
 
@@ -124,15 +125,19 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 		return
 	}
 
-	log.Printf("Pushing changes\n")
-	if _, err := repo.Push(); err != nil {
-		log.Fatalf("Error: \"Could not push\" %s", err)
-		return
-	}
+	if os.Getenv("DRY_RUN") == "1" {
+		log.Println("Running in DryRun mode, not doing the pull request nor pushing the changes")
+	} else {
+		log.Printf("Pushing changes\n")
+		if _, err := repo.Push(); err != nil {
+			log.Fatalf("Error: \"Could not push\" %s", err)
+			return
+		}
 
-	log.Printf("Creating PR\n")
-	description := fmt.Sprintf("%s version %s is now available! Please update.", moduleToUpdate.Module, moduleToUpdate.Latest)
-	createPullRequest(auth, branch, project.DefaultBranch, project.Owner, project.Name, title, description)
+		log.Printf("Creating PR\n")
+		description := fmt.Sprintf("%s version %s is now available! Please update.", moduleToUpdate.Module, moduleToUpdate.Latest)
+		createPullRequest(auth, branch, project.DefaultBranch, project.Owner, project.Name, title, description)
+	}
 }
 
 func execute(pwd string, command string, params ...string) (string, error) {

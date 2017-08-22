@@ -150,12 +150,11 @@ func mvnUpdateDep(path string, mver moduleVersion) error { //dependency string, 
 						if err != nil {
 							panic(err)
 						}
-
 					}
 				}
 			}
 		}
 	}
-	_, err := execute(path, "mvn", "versions:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
+	_, err = execute(path, "mvn", "org.codehaus.mojo:versions-maven-plugin:2.4:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
 	return err
 }

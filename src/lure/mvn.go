@@ -17,7 +17,7 @@ import (
 )
 
 func mvnOutdated(path string) []moduleVersion {
-	cmd := exec.Command("mvn", "versions:display-dependency-updates")
+	cmd := exec.Command("mvn", "versions:display-dependency-updates", "-DprocessDependencyManagement=false")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Dir = path

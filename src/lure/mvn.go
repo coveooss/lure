@@ -160,8 +160,12 @@ func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency 
 	}
 	autoUpdateResult, err := execute(path, "mvn", "org.codehaus.mojo:versions-maven-plugin:2.4:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
 
-	if strings.Contains(autoUpdateResult, fmt.Sprintf("Updated %s:%s:jar:%s to version %s",  mver.Module, dependency, mver.Current, version)) == true {
+	if strings.Contains(autoUpdateResult, fmt.Sprintf("Updated %s:jar:%s to version %s", dependency, mver.Current, version)) == true {
 		hasUpdate = true
+	}
+
+	if hasUpdate == true {
+		fmt.Sprintf("Updated %s:%s:jar:%s to version %s",  mver.Module, dependency, mver.Current, version)
 	}
 
 	return hasUpdate, err

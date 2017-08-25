@@ -56,7 +56,7 @@ func npmOutdated(path string) []moduleVersion {
 	return version
 }
 
-func readPackageJSON(dir string, module string, version string) error {
+func readPackageJSON(dir string, module string, version string) (bool, error) {
 	packageJSONBuffer, _ := ioutil.ReadFile(dir + "/package.json")
 	var parsedPackageJSON packageJSON
 
@@ -69,7 +69,7 @@ func readPackageJSON(dir string, module string, version string) error {
 	updatedJSON, _ := json.MarshalIndent(&parsedPackageJSON, "", "  ")
 	ioutil.WriteFile(dir+"/package.json", updatedJSON, 0770)
 
-	return nil
+	return true, nil
 }
 
 func updateJSON(parsedPackageJSON *packageJSON, key string, module string, version string) {

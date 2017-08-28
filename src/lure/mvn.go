@@ -17,7 +17,7 @@ import (
 )
 
 func mvnOutdated(path string) []moduleVersion {
-	cmd := exec.Command("mvn", "versions:display-dependency-updates")
+	cmd := exec.Command("mvn", "versions:display-dependency-updates", "-DprocessDependencyManagement=false")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Dir = path
@@ -75,9 +75,11 @@ type property struct {
 }
 
 
-func mvnUpdateDep(path string, mver moduleVersion) error { //dependency string, version string)
+func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency string, version string)
 	dependency := mver.Module
 	version := mver.Latest
+
+	hasUpdate := false
 
 	//list all folder with pom.xml
 	cmd := exec.Command("mvn",  "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
@@ -109,7 +111,7 @@ func mvnUpdateDep(path string, mver moduleVersion) error { //dependency string, 
 		xmlFile, err := os.Open(folder + "/pom.xml")
 		if err != nil {
 			fmt.Println("Error opening file:", err)
-			return err
+			return false, err
 		}
 		defer xmlFile.Close()
 
@@ -127,7 +129,7 @@ func mvnUpdateDep(path string, mver moduleVersion) error { //dependency string, 
 					xmlFile, err := os.Open(folder2 + "/pom.xml")
 					if err != nil {
 						fmt.Println("Error opening file:", err)
-						return err
+						return false, err
 					}
 					defer xmlFile.Close()
 
@@ -150,11 +152,21 @@ func mvnUpdateDep(path string, mver moduleVersion) error { //dependency string, 
 						if err != nil {
 							panic(err)
 						}
+						hasUpdate = true
 					}
 				}
 			}
 		}
 	}
-	_, err = execute(path, "mvn", "org.codehaus.mojo:versions-maven-plugin:2.4:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
-	return err
+	autoUpdateResult, err := execute(path, "mvn", "org.codehaus.mojo:versions-maven-plugin:2.4:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
+
+	if strings.Contains(autoUpdateResult, fmt.Sprintf("Updated %s:jar:%s to version %s", dependency, mver.Current, version)) == true {
+		hasUpdate = true
+	}
+
+	if hasUpdate == true {
+		fmt.Sprintf("Updated %s:%s:jar:%s to version %s",  mver.Module, dependency, mver.Current, version)
+	}
+
+	return hasUpdate, err
 }

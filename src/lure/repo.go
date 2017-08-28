@@ -115,9 +115,15 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 		return
 	}
 
+	hasChanges := false
+
 	switch moduleToUpdate.Type {
-	case "maven": mvnUpdateDep(repo.LocalPath(), moduleToUpdate)
-	case "npm": readPackageJSON(repo.LocalPath(), moduleToUpdate.Module, moduleToUpdate.Latest)
+	case "maven": hasChanges,_ = mvnUpdateDep(repo.LocalPath(), moduleToUpdate)
+	case "npm": hasChanges,_ = readPackageJSON(repo.LocalPath(), moduleToUpdate.Module, moduleToUpdate.Latest)
+	}
+
+	if hasChanges == false {
+		return
 	}
 
 	if _, err := repo.Commit("Update "+moduleToUpdate.Module+" to "+moduleToUpdate.Latest); err != nil {

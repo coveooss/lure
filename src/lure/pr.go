@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/k0kubun/pp"
+	log2 "github.com/vsekhar/govtil/log"
 )
 
 type Branch struct {
@@ -43,9 +44,9 @@ func createApiRequest(auth Authentication, method string, path string, body io.R
 	var url = ""
 	switch auth := auth.(type) {
 	case UserPassAuth:
-		url = fmt.Sprintf("https://%s:%s@%s/%s", auth.username, auth.password, apiURI, path)
+		url = fmt.Sprintf("https://%s:%s@%s%s", auth.username, auth.password, apiURI, path)
 	default:
-		url = fmt.Sprintf("https://%s/%s", apiURI, path)
+		url = fmt.Sprintf("https://%s%s", apiURI, path)
 	}
 
 	request, err := http.NewRequest(method, url, body)
@@ -68,12 +69,16 @@ func getPullRequests(auth Authentication, username string, repoSlug string) []Pu
 		acceptedStates += "&state=DECLINED"
 	}
 
-	url := fmt.Sprintf("https://%s/%s/%s/pullrequests/?%s", apiURI, username, repoSlug, acceptedStates)
+	url := fmt.Sprintf("/%s/%s/pullrequests/?%s", username, repoSlug, acceptedStates)
 
 	prRequest, _ := createApiRequest(auth, "GET", url, nil)
 	prRequest.Header.Add("Content-Type", "application/json")
 
-	resp, _ := http.DefaultClient.Do(prRequest)
+	resp, e := http.DefaultClient.Do(prRequest)
+
+	if e != nil {
+		log2.Error(e)
+	}
 
 	var list PullRequestList
 	json.NewDecoder(resp.Body).Decode(&list)
@@ -100,7 +105,7 @@ func createPullRequest(auth Authentication, sourceBranch string, destBranch stri
 	buf := &bytes.Buffer{}
 	json.NewEncoder(buf).Encode(&pr)
 
-	prRequest, err := createApiRequest(auth, "POST", fmt.Sprintf("%s/%s/pullrequests/", owner, repo), buf)
+	prRequest, err := createApiRequest(auth, "POST", fmt.Sprintf("/%s/%s/pullrequests/", owner, repo), buf)
 	if err != nil {
 		return err
 	}

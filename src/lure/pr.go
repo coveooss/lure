@@ -12,6 +12,7 @@ import (
 
 	"github.com/k0kubun/pp"
 	log2 "github.com/vsekhar/govtil/log"
+	"net/url"
 )
 
 type Branch struct {
@@ -35,6 +36,7 @@ type PullRequest struct {
 }
 
 type PullRequestList struct {
+	Next		string		  `json:"next"`
 	PullRequest []PullRequest `json:"values"`
 }
 
@@ -69,19 +71,34 @@ func getPullRequests(auth Authentication, username string, repoSlug string) []Pu
 		acceptedStates += "&state=DECLINED"
 	}
 
-	url := fmt.Sprintf("/%s/%s/pullrequests/?%s", username, repoSlug, acceptedStates)
+	bitBucketPath := fmt.Sprintf("/%s/%s/pullrequests/?%s", username, repoSlug, acceptedStates)
 
-	prRequest, _ := createApiRequest(auth, "GET", url, nil)
+	prRequest, _ := createApiRequest(auth, "GET", bitBucketPath, nil)
 	prRequest.Header.Add("Content-Type", "application/json")
 
+	var list PullRequestList
+	var tmpList PullRequestList
+
 	resp, e := http.DefaultClient.Do(prRequest)
+	json.NewDecoder(resp.Body).Decode(&tmpList)
+	list.PullRequest = append(list.PullRequest, tmpList.PullRequest...)
+
+	if tmpList.Next != "" {
+		for tmpList.Next != "" && len(tmpList.PullRequest) != 0 {
+			prRequest.URL, _ = url.Parse(tmpList.Next)
+			tmpList.Next = "" //Reset
+			resp, e = http.DefaultClient.Do(prRequest)
+			json.NewDecoder(resp.Body).Decode(&tmpList)
+			list.PullRequest = append(list.PullRequest, tmpList.PullRequest...)
+		}
+	}
 
 	if e != nil {
 		log2.Error(e)
 	}
 
-	var list PullRequestList
-	json.NewDecoder(resp.Body).Decode(&list)
+	list.PullRequest = append(list.PullRequest, tmpList.PullRequest...)
+
 	return list.PullRequest
 }
 

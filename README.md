@@ -32,3 +32,11 @@ See [bitbucket documentation](https://confluence.atlassian.com/bitbucket/oauth-o
 
 go run *.go
 ```
+
+## jenkins
+
+```sh
+wget https://github.com/coveo/Lure/releases/download/v1.0/lure-linux-amd64
+chmod +x lure-linux-amd64
+./lure-linux-amd64 -auth env -config ${WORKSPACE}/lure.config
+```

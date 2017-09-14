@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"os/exec"
 	"regexp"
 
@@ -46,7 +46,7 @@ func npmOutdated(path string) []moduleVersion {
 			latestVersion, _ := semver.Parse(mv.Latest)
 
 			if wantedVersion.LT(latestVersion) {
-				fmt.Printf("Including NPM version %s", mv)
+				log.Printf("Including NPM version %s", mv)
 				version = append(version, mv)
 			}
 		}

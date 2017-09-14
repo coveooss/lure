@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -91,7 +90,7 @@ func getPullRequests(auth Authentication, username string, repoSlug string) []Pu
 	}
 
 	if e != nil {
-		fmt.Println("error: " + e.Error())
+		log.Println("error: " + e.Error())
 	}
 
 	list.PullRequest = append(list.PullRequest, tmpList.PullRequest...)
@@ -126,18 +125,13 @@ func createPullRequest(auth Authentication, sourceBranch string, destBranch stri
 
 	prRequest.Header.Add("Content-Type", "application/json")
 
-	log.Printf("%s\n", prRequest)
+	log.Printf("%v\n", prRequest)
 
 	resp, err := http.DefaultClient.Do(prRequest)
 	if err != nil {
 		return err
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(string(body))
+	io.Copy(os.Stdout, resp.Body)
 	return nil
 }

@@ -36,7 +36,7 @@ func mvnOutdated(path string) []moduleVersion {
 	version := make([]moduleVersion, 0, 0)
 	var lastPackage []string
 	for scanner.Scan() {
-		fmt.Printf("> %s\n", scanner.Text())
+		log.Printf("> %s\n", scanner.Text())
 		packageName := mvnPackageRegex.FindStringSubmatch(scanner.Text())
 		if packageName != nil {
 			lastPackage = packageName
@@ -45,7 +45,7 @@ func mvnOutdated(path string) []moduleVersion {
 		packageVersion := mvnVersionRegex.FindStringSubmatch(scanner.Text())
 		if packageVersion != nil {
 
-			fmt.Printf(">%q - %q\n", packageName, packageVersion)
+			log.Printf(">%q - %q\n", packageName, packageVersion)
 			mv := moduleVersion{
 				Type:    "maven",
 				Module:  lastPackage[1] + ":" + lastPackage[2],
@@ -53,7 +53,7 @@ func mvnOutdated(path string) []moduleVersion {
 				Wanted:  packageVersion[2],
 				Latest:  packageVersion[2],
 			}
-			fmt.Println(mv)
+			log.Println(mv)
 			version = append(version, mv)
 		}
 	}
@@ -89,7 +89,7 @@ func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency 
 	err := cmd.Run()
 
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		log.Fatal(err)
 	}
 
@@ -98,7 +98,7 @@ func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency 
 
 	var folders []string
 	for scanner.Scan() {
-		fmt.Printf(scanner.Text())
+		log.Printf(scanner.Text())
 		folders = append(folders, scanner.Text())
 	}
 
@@ -108,7 +108,7 @@ func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency 
 	for _, folder := range folders {
 		xmlFile, err := os.Open(folder + "/pom.xml")
 		if err != nil {
-			fmt.Println("Error opening file:", err)
+			log.Println("Error opening file:", err)
 			return false, err
 		}
 		defer xmlFile.Close()
@@ -120,13 +120,13 @@ func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency 
 
 		for _, dep := range mvnProject.Dependencies {
 			if isProperty.MatchString(dep.Version) && dependency == (dep.GroupId+":"+dep.ArtifactId) {
-				fmt.Println("%s : %s : %s", folder, dep.ArtifactId, dep.Version)
+				log.Printf("%s : %s : %s\n", folder, dep.ArtifactId, dep.Version)
 				propertyToReplace = strings.TrimRight(strings.TrimLeft(dep.Version, "${"), "}")
 
 				for _, folder2 := range folders {
 					xmlFile, err := os.Open(folder2 + "/pom.xml")
 					if err != nil {
-						fmt.Println("Error opening file:", err)
+						log.Println("Error opening file:", err)
 						return false, err
 					}
 					defer xmlFile.Close()
@@ -163,7 +163,7 @@ func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency 
 	}
 
 	if hasUpdate == true {
-		fmt.Sprintf("Updated %s:%s:jar:%s to version %s", mver.Module, dependency, mver.Current, version)
+		log.Printf("Updated %s:%s:jar:%s to version %s\n", mver.Module, dependency, mver.Current, version)
 	}
 
 	return hasUpdate, err

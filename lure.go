@@ -1,17 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"time"
-
-	"github.com/gin-gonic/gin"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/bitbucket"
@@ -19,45 +14,52 @@ import (
 	"github.com/coveo/lure/lib/lure"
 )
 
-func main() {
-	mode := flag.String("auth", "", "one of [oauth, env]")
-	confFile := flag.String("config", "", "path to config file")
-	flag.Parse()
+var (
+	mode     = flag.String("auth", "", "one of [oauth, env]")
+	confFile = flag.String("config", "", "path to config file")
 
-	var mainFunc Main = nil
-	switch *mode {
-	case "oauth":
-		log.Println("Using OAuth Authentication")
-		mainFunc = mainWithOAuth
-	case "env":
-		log.Println("Using Environment Authentication")
-		mainFunc = mainWithEnvironmentAuth
-	default:
-		fmt.Printf("Invalid auth: %s", *mode)
-		os.Exit(1)
+	bitBucketOAuthConfig = oauth2.Config{
+		ClientID:     os.Getenv("BITBUCKET_CLIENT_ID"),
+		ClientSecret: os.Getenv("BITBUCKET_CLIENT_SECRET"),
+		Endpoint:     bitbucket.Endpoint,
 	}
+)
+
+type CommandFunc func(auth lure.Authentication, project lure.Project, args map[string]string) error
+
+func main() {
+	flag.Parse()
 
 	config, err := loadConfig(*confFile)
 	if err != nil {
-		fmt.Printf("Error Loading Config: %s\n", err)
+		log.Printf("Error Loading Config: %s\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("Config: %s\n", config)
+	log.Printf("Config: %s\n", config)
 
-	mainFunc(config)
+	switch *mode {
+	case "oauth":
+		log.Println("Using OAuth Authentication")
+		mainWithOAuth(config)
+	case "env":
+		log.Println("Using Environment Authentication")
+		mainWithEnvironmentAuth(config)
+	default:
+		log.Printf("Invalid auth mode: %s", *mode)
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
 }
 
 func getCommand(commandName string) CommandFunc {
-	var commandFunc CommandFunc = nil
-
 	switch commandName {
 	case "updateDependencies":
-		commandFunc = lure.CheckForUpdatesJobCommand
+		return lure.CheckForUpdatesJobCommand
 	case "synchronizedBranches":
-		commandFunc = lure.SynchronizedBranchesCommand
+		return lure.SynchronizedBranchesCommand
 	}
 
-	return commandFunc
+	return nil
 }
 
 func runMain(config *lure.LureConfig, auth lure.Authentication) {
@@ -80,7 +82,6 @@ func runMain(config *lure.LureConfig, auth lure.Authentication) {
 }
 
 func mainWithEnvironmentAuth(config *lure.LureConfig) {
-
 	auth := lure.UserPassAuth{
 		Username: os.Getenv("BITBUCKET_USERNAME"),
 		Password: os.Getenv("BITBUCKET_PASSWORD"),
@@ -90,37 +91,36 @@ func mainWithEnvironmentAuth(config *lure.LureConfig) {
 }
 
 func mainWithOAuth(config *lure.LureConfig) {
-
-	r := gin.Default()
-	r.GET("/login", func(c *gin.Context) {
-		fmt.Println("plz")
-		c.Redirect(302, bitBucketOAuthConfig.AuthCodeURL(""))
+	mux := http.NewServeMux()
+	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, bitBucketOAuthConfig.AuthCodeURL(""), http.StatusFound)
 	})
 
-	r.GET("/callback", func(c *gin.Context) {
-		if len(c.Request.FormValue("error")) != 0 {
-			respondWithError(http.StatusUnauthorized, "There was an error authenticating with google", c)
-			return
-		}
-		if len(c.Request.FormValue("code")) == 0 {
-			respondWithError(http.StatusUnauthorized, "Code is not present", c)
-			return
-		}
-
-		token, err := bitBucketOAuthConfig.Exchange(oauth2.NoContext, c.Request.FormValue("code"))
-		if err != nil {
-			respondWithError(http.StatusInternalServerError, "There was an error with the token exchange"+err.Error(), c)
+	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		if r.FormValue("error") != "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("There was an error authenticating with google"))
 			return
 		}
 
-		fmt.Println(token)
-
-		if token == nil {
-			respondWithError(http.StatusInternalServerError, "There was an error with the token exchange, no error, but no token either", c)
+		if r.FormValue("code") == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Code is not present"))
 			return
 		}
 
-		c.String(http.StatusFound, "Linking with Bitbucket worked - get out and wait for an update")
+		token, err := bitBucketOAuthConfig.Exchange(oauth2.NoContext, r.FormValue("code"))
+		if err != nil || token == nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(fmt.Sprintf("There was an error with the token exchange: error:'%s', token: '%s' ", err.Error(), token)))
+			return
+		}
+
+		log.Println("Token is", token)
+
+		w.WriteHeader(http.StatusFound)
+		w.Write([]byte("Linking with Bitbucket worked - get out and wait for an update"))
 
 		go (func() {
 			auth := lure.TokenAuth{token.AccessToken}
@@ -129,41 +129,20 @@ func mainWithOAuth(config *lure.LureConfig) {
 			os.Exit(0)
 		})()
 	})
-	fmt.Println("--------GO THERE ", bitBucketOAuthConfig.AuthCodeURL(""))
-	go r.Run(":9090")
 
-	lure.Execute("", "open", "http://localhost:9090/login")
-	for {
-		time.Sleep(5000 * time.Second)
-	}
+	log.Println("Open that page: http://localhost:9090/login")
+	http.ListenAndServe(":9090", mux)
 }
 
-var (
-	bitBucketOAuthConfig = oauth2.Config{
-		ClientID:     os.Getenv("BITBUCKET_CLIENT_ID"),
-		ClientSecret: os.Getenv("BITBUCKET_CLIENT_SECRET"),
-		Endpoint:     bitbucket.Endpoint,
-	}
-)
-
 func loadConfig(filePath string) (*lure.LureConfig, error) {
-	data, err := ioutil.ReadFile(filePath)
+	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
 
 	lureConfig := &lure.LureConfig{}
-	if err := json.NewDecoder(bytes.NewReader(data)).Decode(lureConfig); err != nil {
+	if err := json.NewDecoder(file).Decode(lureConfig); err != nil {
 		return nil, err
 	}
 	return lureConfig, nil
 }
-
-func respondWithError(code int, message string, c *gin.Context) {
-	resp := map[string]string{"error": message}
-
-	c.JSON(code, resp)
-}
-
-type CommandFunc func(auth lure.Authentication, project lure.Project, args map[string]string) error
-type Main func(config *lure.LureConfig)

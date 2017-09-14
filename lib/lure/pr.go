@@ -91,7 +91,7 @@ func getPullRequests(auth Authentication, username string, repoSlug string) []Pu
 	}
 
 	if e != nil {
-		fmt.Println("error: " + e.Error())
+		log.Println("error: " + e.Error())
 	}
 
 	list.PullRequest = append(list.PullRequest, tmpList.PullRequest...)
@@ -138,6 +138,6 @@ func createPullRequest(auth Authentication, sourceBranch string, destBranch stri
 		return err
 	}
 
-	fmt.Println(string(body))
+	log.Println(string(body))
 	return nil
 }

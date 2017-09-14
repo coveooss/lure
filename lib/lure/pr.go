@@ -1,18 +1,15 @@
-package main
+package lure
 
 import (
-	"os"
-	"io"
-	"log"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
-
-	"github.com/k0kubun/pp"
-	log2 "github.com/vsekhar/govtil/log"
 	"net/url"
+	"os"
 )
 
 type Branch struct {
@@ -36,7 +33,7 @@ type PullRequest struct {
 }
 
 type PullRequestList struct {
-	Next		string		  `json:"next"`
+	Next        string        `json:"next"`
 	PullRequest []PullRequest `json:"values"`
 }
 
@@ -46,7 +43,7 @@ func createApiRequest(auth Authentication, method string, path string, body io.R
 	var url = ""
 	switch auth := auth.(type) {
 	case UserPassAuth:
-		url = fmt.Sprintf("https://%s:%s@%s%s", auth.username, auth.password, apiURI, path)
+		url = fmt.Sprintf("https://%s:%s@%s%s", auth.Username, auth.Password, apiURI, path)
 	default:
 		url = fmt.Sprintf("https://%s%s", apiURI, path)
 	}
@@ -58,7 +55,7 @@ func createApiRequest(auth Authentication, method string, path string, body io.R
 
 	switch auth := auth.(type) {
 	case TokenAuth:
-		request.Header.Add("Authorization", "Bearer " + auth.token)
+		request.Header.Add("Authorization", "Bearer "+auth.Token)
 	}
 
 	return request, err
@@ -67,7 +64,7 @@ func createApiRequest(auth Authentication, method string, path string, body io.R
 func getPullRequests(auth Authentication, username string, repoSlug string) []PullRequest {
 
 	acceptedStates := "state=OPEN"
-	if (os.Getenv("IGNORE_DECLINED_PR") != "1") {
+	if os.Getenv("IGNORE_DECLINED_PR") != "1" {
 		acceptedStates += "&state=DECLINED"
 	}
 
@@ -94,7 +91,7 @@ func getPullRequests(auth Authentication, username string, repoSlug string) []Pu
 	}
 
 	if e != nil {
-		log2.Error(e)
+		fmt.Println("error: " + e.Error())
 	}
 
 	list.PullRequest = append(list.PullRequest, tmpList.PullRequest...)
@@ -102,7 +99,7 @@ func getPullRequests(auth Authentication, username string, repoSlug string) []Pu
 	return list.PullRequest
 }
 
-func createPullRequest(auth Authentication, sourceBranch string, destBranch string, owner string, repo string, title string, description string) (error) {
+func createPullRequest(auth Authentication, sourceBranch string, destBranch string, owner string, repo string, title string, description string) error {
 	pr := PullRequest{
 		Title:       title,
 		Description: description,
@@ -141,6 +138,6 @@ func createPullRequest(auth Authentication, sourceBranch string, destBranch stri
 		return err
 	}
 
-	pp.Println(string(body))
+	fmt.Println(string(body))
 	return nil
 }

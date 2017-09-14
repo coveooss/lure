@@ -1,13 +1,13 @@
-package main
+package lure
 
 import (
+	"errors"
 	"fmt"
 	"log"
-	"errors"
 	"os"
 )
 
-func synchronizedBranchesCommand(auth Authentication, project Project, args map[string]string) (error) {
+func SynchronizedBranchesCommand(auth Authentication, project Project, args map[string]string) error {
 	fromBranch, ok := args["from"]
 	if !ok {
 		return errors.New("Missing argument 'from'")
@@ -20,7 +20,7 @@ func synchronizedBranchesCommand(auth Authentication, project Project, args map[
 	return synchronizedBranches(auth, project, fromBranch, toBranch)
 }
 
-func synchronizedBranches(auth Authentication, project Project, fromBranch string, toBranch string) (error) {
+func synchronizedBranches(auth Authentication, project Project, fromBranch string, toBranch string) error {
 
 	repo, err := cloneRepo(auth, project)
 	if err != nil {

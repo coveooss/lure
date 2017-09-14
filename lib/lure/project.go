@@ -1,4 +1,4 @@
-package main
+package lure
 
 type Command struct {
 	Name string            `json:"name"`

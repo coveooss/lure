@@ -1,18 +1,18 @@
-package main
+package lure
 
 import (
 	"bufio"
 	"bytes"
+	"encoding/xml"
 	"log"
 	"os/exec"
 	"regexp"
-	"encoding/xml"
 
-	"github.com/k0kubun/pp"
 	"fmt"
-	"os"
 	"io/ioutil"
+	"os"
 	"strings"
+
 	"launchpad.net/xmlpath"
 )
 
@@ -38,22 +38,22 @@ func mvnOutdated(path string) []moduleVersion {
 	for scanner.Scan() {
 		fmt.Printf("> %s\n", scanner.Text())
 		packageName := mvnPackageRegex.FindStringSubmatch(scanner.Text())
-		if(packageName != nil) {
+		if packageName != nil {
 			lastPackage = packageName
 		}
 
 		packageVersion := mvnVersionRegex.FindStringSubmatch(scanner.Text())
-		if (packageVersion != nil) {
+		if packageVersion != nil {
 
 			fmt.Printf(">%q - %q\n", packageName, packageVersion)
 			mv := moduleVersion{
-				Type: "maven",
+				Type:    "maven",
 				Module:  lastPackage[1] + ":" + lastPackage[2],
 				Current: packageVersion[1],
 				Wanted:  packageVersion[2],
 				Latest:  packageVersion[2],
 			}
-			pp.Println(mv)
+			fmt.Println(mv)
 			version = append(version, mv)
 		}
 	}
@@ -65,15 +65,13 @@ type project struct {
 	ModelVersion string `xml:"modelVersion"`
 	Dependencies []struct {
 		ArtifactId string `xml:"artifactId"`
-		GroupId string `xml:"groupId"`
-		Version string `xml:"version"`
+		GroupId    string `xml:"groupId"`
+		Version    string `xml:"version"`
 	} `xml:"dependencies>dependency"`
 }
 
 type property struct {
-
 }
-
 
 func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency string, version string)
 	dependency := mver.Module
@@ -82,7 +80,7 @@ func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency 
 	hasUpdate := false
 
 	//list all folder with pom.xml
-	cmd := exec.Command("mvn",  "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
+	cmd := exec.Command("mvn", "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
 	var out bytes.Buffer
 	var stree bytes.Buffer
 	cmd.Stdout = &out
@@ -121,7 +119,7 @@ func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency 
 		xml.Unmarshal(b, &mvnProject)
 
 		for _, dep := range mvnProject.Dependencies {
-			if isProperty.MatchString(dep.Version) && dependency == (dep.GroupId + ":" + dep.ArtifactId) {
+			if isProperty.MatchString(dep.Version) && dependency == (dep.GroupId+":"+dep.ArtifactId) {
 				fmt.Println("%s : %s : %s", folder, dep.ArtifactId, dep.Version)
 				propertyToReplace = strings.TrimRight(strings.TrimLeft(dep.Version, "${"), "}")
 
@@ -141,14 +139,14 @@ func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency 
 					}
 					if _, ok := path.String(root); ok {
 						b, _ := ioutil.ReadFile(folder2 + "/pom.xml")
-						newContent := strings.Replace(string(b), "<" +
-							propertyToReplace + ">" + mver.Current +
-							"</" + propertyToReplace + ">",
-							"<" + propertyToReplace + ">" +
-								version +
-							"</" + propertyToReplace + ">", -1)
+						newContent := strings.Replace(string(b), "<"+
+							propertyToReplace+">"+mver.Current+
+							"</"+propertyToReplace+">",
+							"<"+propertyToReplace+">"+
+								version+
+								"</"+propertyToReplace+">", -1)
 
-						err = ioutil.WriteFile(folder2 + "/pom.xml", []byte(newContent), 0)
+						err = ioutil.WriteFile(folder2+"/pom.xml", []byte(newContent), 0)
 						if err != nil {
 							panic(err)
 						}
@@ -158,14 +156,14 @@ func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency 
 			}
 		}
 	}
-	autoUpdateResult, err := execute(path, "mvn", "org.codehaus.mojo:versions-maven-plugin:2.4:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
+	autoUpdateResult, err := Execute(path, "mvn", "org.codehaus.mojo:versions-maven-plugin:2.4:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
 
 	if strings.Contains(autoUpdateResult, fmt.Sprintf("Updated %s:jar:%s to version %s", dependency, mver.Current, version)) == true {
 		hasUpdate = true
 	}
 
 	if hasUpdate == true {
-		fmt.Sprintf("Updated %s:%s:jar:%s to version %s",  mver.Module, dependency, mver.Current, version)
+		fmt.Sprintf("Updated %s:%s:jar:%s to version %s", mver.Module, dependency, mver.Current, version)
 	}
 
 	return hasUpdate, err

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -133,11 +132,6 @@ func createPullRequest(auth Authentication, sourceBranch string, destBranch stri
 		return err
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	log.Println(string(body))
+	io.Copy(os.Stdout, resp.Body)
 	return nil
 }

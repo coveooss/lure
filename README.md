@@ -1,5 +1,8 @@
 # lure
 
+[![Build Status](https://travis-ci.org/coveo/lure.svg)](https://travis-ci.org/coveo/lure)
+[![Go Report Card](https://goreportcard.com/badge/github.com/coveo/lure)](https://goreportcard.com/report/github.com/coveo/lure)
+
 Update your dependencies, with hooks, for developers.
 
 ## Run

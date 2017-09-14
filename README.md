@@ -43,3 +43,9 @@ cd $GOPATH/src/github.com/coveo/lure
 go get ./...
 go run lure.go
 ```
+
+Build:
+
+```sh
+go build lure.go
+```

@@ -38,7 +38,7 @@ mkdir -p $HOME/go/
 
 ```sh
 go get github.com/coveo/lure/
-cd $GOPATH/src/coveo/lure
+cd $GOPATH/src/github.com/coveo/lure
 # or $HOME/go/src/coveo/lure if you don't have a $GOPATH set up which is perfectly fine
 go get ./...
 go run lure.go

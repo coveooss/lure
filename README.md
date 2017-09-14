@@ -21,16 +21,12 @@ See [bitbucket documentation](https://confluence.atlassian.com/bitbucket/oauth-o
 
 ## dependencies.
 
-`go get -v lure`
+`go get -v ./...`
 
 ## test.
 
 ```sh
-./go.osx.sh
-
-# Or
-
-go run *.go
+go run lure.go
 ```
 
 ## jenkins

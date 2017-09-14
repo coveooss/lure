@@ -1,57 +1,27 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"flag"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
-	"log"
-	"io/ioutil"
 	"time"
-	"bytes"
-	"flag"
 
 	"github.com/gin-gonic/gin"
-	"github.com/k0kubun/pp"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/bitbucket"
-	"encoding/json"
+
+	"github.com/coveo/lure/lib/lure"
 )
-
-var (
-	bitBucketOAuthConfig = oauth2.Config{
-		ClientID:     os.Getenv("BITBUCKET_CLIENT_ID"),
-		ClientSecret: os.Getenv("BITBUCKET_CLIENT_SECRET"),
-		Endpoint:     bitbucket.Endpoint,
-	}
-)
-
-func loadConfig(filePath string) (*LureConfig, error) {
-	data, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		return nil, err
-	}
-
-	var lureConfig *LureConfig = &LureConfig{}
-	if err := json.NewDecoder(bytes.NewReader(data)).Decode(lureConfig); err != nil {
-		return nil, err
-	}
-	return lureConfig, nil
-}
-
-func respondWithError(code int, message string, c *gin.Context) {
-	resp := map[string]string{"error": message}
-
-	c.JSON(code, resp)
-}
-
-type CommandFunc func(auth Authentication, project Project, args map[string]string) error
-type Main func(config *LureConfig)
 
 func main() {
 	mode := flag.String("auth", "", "one of [oauth, env]")
-	confFile:= flag.String("config", "", "path to config file")
-
+	confFile := flag.String("config", "", "path to config file")
 	flag.Parse()
 
 	var mainFunc Main = nil
@@ -82,17 +52,17 @@ func getCommand(commandName string) CommandFunc {
 
 	switch commandName {
 	case "updateDependencies":
-		commandFunc = checkForUpdatesJobCommand
+		commandFunc = lure.CheckForUpdatesJobCommand
 	case "synchronizedBranches":
-		commandFunc = synchronizedBranchesCommand
+		commandFunc = lure.SynchronizedBranchesCommand
 	}
 
 	return commandFunc
 }
 
-func runMain(config *LureConfig, auth Authentication) {
+func runMain(config *lure.LureConfig, auth lure.Authentication) {
 	for _, project := range config.Projects {
-		log.Println(fmt.Sprintf("Project: %s/%s", project.Owner , project.Name))
+		log.Println(fmt.Sprintf("Project: %s/%s", project.Owner, project.Name))
 
 		for _, command := range project.Commands {
 			log.Println(fmt.Sprintf("\tCommand: %s", command.Name))
@@ -109,21 +79,21 @@ func runMain(config *LureConfig, auth Authentication) {
 	}
 }
 
-func mainWithEnvironmentAuth(config *LureConfig) {
+func mainWithEnvironmentAuth(config *lure.LureConfig) {
 
-	auth := UserPassAuth{
-		username: os.Getenv("BITBUCKET_USERNAME"),
-		password: os.Getenv("BITBUCKET_PASSWORD"),
+	auth := lure.UserPassAuth{
+		Username: os.Getenv("BITBUCKET_USERNAME"),
+		Password: os.Getenv("BITBUCKET_PASSWORD"),
 	}
 
 	runMain(config, auth)
 }
 
-func mainWithOAuth(config *LureConfig) {
+func mainWithOAuth(config *lure.LureConfig) {
 
 	r := gin.Default()
 	r.GET("/login", func(c *gin.Context) {
-		pp.Println("plz")
+		fmt.Println("plz")
 		c.Redirect(302, bitBucketOAuthConfig.AuthCodeURL(""))
 	})
 
@@ -143,7 +113,7 @@ func mainWithOAuth(config *LureConfig) {
 			return
 		}
 
-		pp.Println(token)
+		fmt.Println(token)
 
 		if token == nil {
 			respondWithError(http.StatusInternalServerError, "There was an error with the token exchange, no error, but no token either", c)
@@ -153,7 +123,7 @@ func mainWithOAuth(config *LureConfig) {
 		c.String(http.StatusFound, "Linking with Bitbucket worked - get out and wait for an update")
 
 		go (func() {
-			auth := TokenAuth{token.AccessToken}
+			auth := lure.TokenAuth{token.AccessToken}
 
 			runMain(config, auth)
 			os.Exit(0)
@@ -162,8 +132,38 @@ func mainWithOAuth(config *LureConfig) {
 	fmt.Println("--------GO THERE ", bitBucketOAuthConfig.AuthCodeURL(""))
 	go r.Run(":9090")
 
-	execute("", "open", "http://localhost:9090/login")
+	lure.Execute("", "open", "http://localhost:9090/login")
 	for {
 		time.Sleep(5000 * time.Second)
 	}
 }
+
+var (
+	bitBucketOAuthConfig = oauth2.Config{
+		ClientID:     os.Getenv("BITBUCKET_CLIENT_ID"),
+		ClientSecret: os.Getenv("BITBUCKET_CLIENT_SECRET"),
+		Endpoint:     bitbucket.Endpoint,
+	}
+)
+
+func loadConfig(filePath string) (*lure.LureConfig, error) {
+	data, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	lureConfig := &lure.LureConfig{}
+	if err := json.NewDecoder(bytes.NewReader(data)).Decode(lureConfig); err != nil {
+		return nil, err
+	}
+	return lureConfig, nil
+}
+
+func respondWithError(code int, message string, c *gin.Context) {
+	resp := map[string]string{"error": message}
+
+	c.JSON(code, resp)
+}
+
+type CommandFunc func(auth lure.Authentication, project lure.Project, args map[string]string) error
+type Main func(config *lure.LureConfig)

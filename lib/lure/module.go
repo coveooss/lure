@@ -1,8 +1,4 @@
-package main
-
-import (
-
-)
+package lure
 
 type UpdateFunc func() error
 

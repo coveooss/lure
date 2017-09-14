@@ -1,11 +1,11 @@
-package main
+package lure
 
 import (
-	"regexp"
-	"strings"
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
+	"strings"
 )
 
 type HgRepo struct {
@@ -22,32 +22,32 @@ func HgSanitizeBranchName(name string) string {
 func HgClone(auth Authentication, source string, to string) (HgRepo, error) {
 	var repo HgRepo
 
-	args := []string{ "clone", source, to }
+	args := []string{"clone", source, to}
 
 	switch auth := auth.(type) {
 	case TokenAuth:
-		source = strings.Replace(source, "://", fmt.Sprintf("://x-token-auth:%s@", auth.token) , 1)
-		args = []string{ "clone", source, to }
+		source = strings.Replace(source, "://", fmt.Sprintf("://x-token-auth:%s@", auth.Token), 1)
+		args = []string{"clone", source, to}
 	case UserPassAuth:
 		args = append([]string{
 			"--config", "auth.repo.prefix=*",
-			"--config", "auth.repo.username=" + auth.username,
-			"--config", "auth.repo.password=" + auth.password,
+			"--config", "auth.repo.username=" + auth.Username,
+			"--config", "auth.repo.password=" + auth.Password,
 		}, args...)
 	}
 
-	if _, err := execute("", "hg", args...); err != nil {
+	if _, err := Execute("", "hg", args...); err != nil {
 		return repo, err
 	}
 
 	repo = HgRepo{
-		localPath: to,
+		localPath:  to,
 		remotePath: source,
 	}
 
 	switch auth := auth.(type) {
 	case UserPassAuth:
-		repo.SetUserPas(auth.username, auth.password)
+		repo.SetUserPas(auth.Username, auth.Password)
 	}
 
 	return repo, nil
@@ -62,10 +62,10 @@ func (hgRepo HgRepo) RemotePath() string {
 }
 
 func (hgRepo HgRepo) Cmd(args ...string) (string, error) {
-	return execute(hgRepo.localPath, "hg", args...)
+	return Execute(hgRepo.localPath, "hg", args...)
 }
 
-func (hgRepo HgRepo) SetUserPas(user string, pass string) (error) {
+func (hgRepo HgRepo) SetUserPas(user string, pass string) error {
 	f, err := os.OpenFile(fmt.Sprintf("%s/.hg/hgrc", hgRepo.localPath), os.O_APPEND|os.O_WRONLY, 0)
 	if err != nil {
 		return err
@@ -108,7 +108,7 @@ func (hgRepo HgRepo) PushDefault() (string, error) {
 }
 
 func (hgRepo HgRepo) LogCommitsBetween(baseRev string, secondRev string) ([]string, error) {
-	out, err := hgRepo.Cmd("log", "-r", "ancestors(" + secondRev + ") and not ancestors(" + baseRev + ")", "--template", "{node}\n")
+	out, err := hgRepo.Cmd("log", "-r", "ancestors("+secondRev+") and not ancestors("+baseRev+")", "--template", "{node}\n")
 	if err != nil {
 		return []string{}, err
 	}

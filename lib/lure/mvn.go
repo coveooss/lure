@@ -120,7 +120,7 @@ func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency 
 
 		for _, dep := range mvnProject.Dependencies {
 			if isProperty.MatchString(dep.Version) && dependency == (dep.GroupId+":"+dep.ArtifactId) {
-				log.Println("%s : %s : %s", folder, dep.ArtifactId, dep.Version)
+				log.Printf("%s : %s : %s\n", folder, dep.ArtifactId, dep.Version)
 				propertyToReplace = strings.TrimRight(strings.TrimLeft(dep.Version, "${"), "}")
 
 				for _, folder2 := range folders {
@@ -163,7 +163,7 @@ func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency 
 	}
 
 	if hasUpdate == true {
-		fmt.Sprintf("Updated %s:%s:jar:%s to version %s", mver.Module, dependency, mver.Current, version)
+		log.Printf("Updated %s:%s:jar:%s to version %s\n", mver.Module, dependency, mver.Current, version)
 	}
 
 	return hasUpdate, err

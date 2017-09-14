@@ -26,7 +26,6 @@ var (
 )
 
 type CommandFunc func(auth lure.Authentication, project lure.Project, args map[string]string) error
-type Main func(config *lure.LureConfig)
 
 func main() {
 	flag.Parse()
@@ -38,7 +37,6 @@ func main() {
 	}
 	log.Printf("Config: %s\n", config)
 
-	var mainFunc Main = nil
 	switch *mode {
 	case "oauth":
 		log.Println("Using OAuth Authentication")
@@ -51,21 +49,17 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
-
-	mainFunc(config)
 }
 
 func getCommand(commandName string) CommandFunc {
-	var commandFunc CommandFunc = nil
-
 	switch commandName {
 	case "updateDependencies":
-		commandFunc = lure.CheckForUpdatesJobCommand
+		return lure.CheckForUpdatesJobCommand
 	case "synchronizedBranches":
-		commandFunc = lure.SynchronizedBranchesCommand
+		return lure.SynchronizedBranchesCommand
 	}
 
-	return commandFunc
+	return nil
 }
 
 func runMain(config *lure.LureConfig, auth lure.Authentication) {
@@ -88,7 +82,6 @@ func runMain(config *lure.LureConfig, auth lure.Authentication) {
 }
 
 func mainWithEnvironmentAuth(config *lure.LureConfig) {
-
 	auth := lure.UserPassAuth{
 		Username: os.Getenv("BITBUCKET_USERNAME"),
 		Password: os.Getenv("BITBUCKET_PASSWORD"),
@@ -98,7 +91,6 @@ func mainWithEnvironmentAuth(config *lure.LureConfig) {
 }
 
 func mainWithOAuth(config *lure.LureConfig) {
-
 	mux := http.NewServeMux()
 	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, bitBucketOAuthConfig.AuthCodeURL(""), http.StatusFound)

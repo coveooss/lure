@@ -1,21 +1,18 @@
-package main
+package lure
 
-import (
-)
-
-type Authentication interface {}
+type Authentication interface{}
 
 type TokenAuth struct {
-	token string
+	Token string
 }
 
 type UserPassAuth struct {
-	username string
-	password string
+	Username string
+	Password string
 }
 
 type Repo interface {
-	LocalPath()  string
+	LocalPath() string
 	RemotePath() string
 
 	Cmd(args ...string) (string, error)
@@ -29,5 +26,5 @@ type Repo interface {
 
 const (
 	Git = "git"
-	Hg = "hg"
+	Hg  = "hg"
 )

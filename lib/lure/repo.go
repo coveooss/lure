@@ -1,15 +1,15 @@
-package main
+package lure
 
 import (
-	"log"
-	"os/exec"
-	"fmt"
-	"reflect"
-	"errors"
 	"bytes"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"reflect"
 
 	"github.com/vsekhar/govtil/guid"
-	"os"
 )
 
 // This part interesting
@@ -21,7 +21,7 @@ func appendIfMissing(modules []moduleVersion, modulesToAdd []moduleVersion) []mo
 		for _, module := range modules {
 			if (moduleToAdd.Name != "" && module.Name == moduleToAdd.Name) || reflect.DeepEqual(module, moduleToAdd) {
 				exist = true
-				break;
+				break
 			}
 		}
 		if !exist {
@@ -63,11 +63,11 @@ func cloneRepo(hgAuth Authentication, project Project) (Repo, error) {
 	return repo, nil
 }
 
-func checkForUpdatesJobCommand(auth Authentication, project Project, args map[string]string) (error) {
+func CheckForUpdatesJobCommand(auth Authentication, project Project, args map[string]string) error {
 	return checkForUpdatesJob(auth, project)
 }
 
-func checkForUpdatesJob(auth Authentication, project Project) (error) {
+func checkForUpdatesJob(auth Authentication, project Project) error {
 
 	repo, err := cloneRepo(auth, project)
 	if err != nil {
@@ -78,7 +78,6 @@ func checkForUpdatesJob(auth Authentication, project Project) (error) {
 	if _, err := repo.Update(project.DefaultBranch); err != nil {
 		return errors.New(fmt.Sprintf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err))
 	}
-
 
 	modulesToUpdate := make([]moduleVersion, 0, 0)
 	modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repo.LocalPath() + "/" + project.BasePath))
@@ -103,7 +102,7 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 	}
 	title = fmt.Sprintf("Update %s dependency %s to version %s", moduleToUpdate.Type, dependencyName, moduleToUpdate.Latest)
 	for _, pr := range existingPRs {
-		if (pr.Title == title) {
+		if pr.Title == title {
 			log.Printf("There already is a PR for: %s", title)
 			return
 		}
@@ -125,8 +124,10 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 	hasChanges := false
 
 	switch moduleToUpdate.Type {
-	case "maven": hasChanges,_ = mvnUpdateDep(repo.LocalPath(), moduleToUpdate)
-	case "npm": hasChanges,_ = readPackageJSON(repo.LocalPath(), moduleToUpdate.Module, moduleToUpdate.Latest)
+	case "maven":
+		hasChanges, _ = mvnUpdateDep(repo.LocalPath(), moduleToUpdate)
+	case "npm":
+		hasChanges, _ = readPackageJSON(repo.LocalPath(), moduleToUpdate.Module, moduleToUpdate.Latest)
 	}
 
 	if hasChanges == false {
@@ -153,7 +154,7 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 	}
 }
 
-func execute(pwd string, command string, params ...string) (string, error) {
+func Execute(pwd string, command string, params ...string) (string, error) {
 	log.Printf("%s %q\n", command, params)
 
 	cmd := exec.Command(command, params...)
@@ -169,7 +170,6 @@ func execute(pwd string, command string, params ...string) (string, error) {
 	out := buff.String()
 
 	log.Printf("\t%s\n", out)
-
 
 	return out, nil
 }

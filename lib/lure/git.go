@@ -1,16 +1,16 @@
-package main
+package lure
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
-	"fmt"
 )
 
 type GitRepo struct {
 	localPath  string
 	remotePath string
 
-	userPass   UserPassAuth
+	userPass UserPassAuth
 }
 
 func GitSanitizeBranchName(name string) string {
@@ -24,19 +24,19 @@ func GitClone(auth Authentication, source string, to string) (GitRepo, error) {
 
 	switch auth := auth.(type) {
 	case TokenAuth:
-		source = strings.Replace(source, "://", fmt.Sprintf("://x-token-auth:%s@", auth.token) , 1)
+		source = strings.Replace(source, "://", fmt.Sprintf("://x-token-auth:%s@", auth.Token), 1)
 	case UserPassAuth:
-		source = strings.Replace(source, "://", fmt.Sprintf("://%s:%s@", auth.username, auth.password) , 1)
+		source = strings.Replace(source, "://", fmt.Sprintf("://%s:%s@", auth.Username, auth.Password), 1)
 	}
 
-	args := []string{ "clone", source, to }
+	args := []string{"clone", source, to}
 
-	if _, err := execute("", "git", args...); err != nil {
+	if _, err := Execute("", "git", args...); err != nil {
 		return repo, err
 	}
 
 	repo = GitRepo{
-		localPath: to,
+		localPath:  to,
 		remotePath: source,
 	}
 
@@ -52,7 +52,7 @@ func (gitRepo GitRepo) RemotePath() string {
 }
 
 func (gitRepo GitRepo) Cmd(args ...string) (string, error) {
-	return execute(gitRepo.localPath, "git", args...)
+	return Execute(gitRepo.localPath, "git", args...)
 }
 
 func (gitRepo GitRepo) Update(rev string) (string, error) {

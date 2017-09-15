@@ -1,15 +1,15 @@
-package main
+package lure
 
 import (
 	"bufio"
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"os/exec"
 	"regexp"
 
 	"github.com/blang/semver"
-	"github.com/k0kubun/pp"
 )
 
 type packageJSON map[string]interface{}
@@ -35,7 +35,7 @@ func npmOutdated(path string) []moduleVersion {
 		if lineIndex != 0 {
 			result := npmRegex.FindStringSubmatch(scanner.Text())
 			mv := moduleVersion{
-				Type: "npm",
+				Type:    "npm",
 				Module:  result[1],
 				Wanted:  result[3],
 				Current: result[2],
@@ -46,7 +46,7 @@ func npmOutdated(path string) []moduleVersion {
 			latestVersion, _ := semver.Parse(mv.Latest)
 
 			if wantedVersion.LT(latestVersion) {
-				pp.Printf("Including NPM version %s", mv)
+				log.Printf("Including NPM version %s", mv)
 				version = append(version, mv)
 			}
 		}
@@ -80,4 +80,3 @@ func updateJSON(parsedPackageJSON *packageJSON, key string, module string, versi
 		(*parsedPackageJSON)[key] = dependencies
 	}
 }
-

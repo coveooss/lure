@@ -130,9 +130,9 @@ type property struct {
 }
 
 
-func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency string, version string)
-	dependency := mver.Module
-	version := mver.Latest
+func mvnUpdateDep(path string, moduleVersion moduleVersion) (bool, error) { //dependency string, version string)
+	dependency := moduleVersion.Module
+	version := moduleVersion.Latest
 
 	hasUpdate := false
 	var err error
@@ -221,7 +221,7 @@ func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency 
     }
 
 	if hasUpdate == true {
-		log.Sprintf("Updated %s:%s:jar:%s to version %s",  moduleVersion.Module, dependency, moduleVersion.Current, version)
+		log.Printf("Updated %s:%s:jar:%s to version %s",  moduleVersion.Module, dependency, moduleVersion.Current, version)
 	}
 
 	return hasUpdate, err

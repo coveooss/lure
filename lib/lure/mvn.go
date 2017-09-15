@@ -35,6 +35,8 @@ func mvnOutdated(path string) []moduleVersion {
 
 	version := make([]moduleVersion, 0, 0)
 	var lastPackage []string
+	var modulePropertyMap map[string]string = getModulePropertyMap(path)
+
 	for scanner.Scan() {
 		log.Printf("> %s\n", scanner.Text())
 		packageName := mvnPackageRegex.FindStringSubmatch(scanner.Text())
@@ -47,11 +49,12 @@ func mvnOutdated(path string) []moduleVersion {
 
 			log.Printf(">%q - %q\n", packageName, packageVersion)
 			mv := moduleVersion{
-				Type:    "maven",
+				Type: "maven",
 				Module:  lastPackage[1] + ":" + lastPackage[2],
 				Current: packageVersion[1],
 				Wanted:  packageVersion[2],
 				Latest:  packageVersion[2],
+				Name:    modulePropertyMap[lastPackage[1] + ":" + lastPackage[2]],
 			}
 			log.Println(mv)
 			version = append(version, mv)
@@ -61,26 +64,82 @@ func mvnOutdated(path string) []moduleVersion {
 	return version
 }
 
+func getModulePropertyMap(path string) map[string]string {
+	var moduleProperties map[string]string = make(map[string]string)
+
+	cmd := exec.Command("mvn",  "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
+	var out bytes.Buffer
+	var stree bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stree
+	cmd.Dir = path
+	err := cmd.Run()
+
+	if err != nil {
+		fmt.Println(err)
+		log.Fatal(err)
+	}
+
+	reader := bytes.NewReader(out.Bytes())
+	scanner := bufio.NewScanner(reader)
+
+	var folders []string
+	for scanner.Scan() {
+		fmt.Printf(scanner.Text())
+		folders = append(folders, scanner.Text())
+	}
+
+	isProperty, _ := regexp.Compile(`\$\{[\w.-]+}`)
+
+	for _, folder := range folders {
+		xmlFile, err := os.Open(folder + "/pom.xml")
+		if err != nil {
+			fmt.Println("Error opening file:", err)
+			break;
+		}
+		defer xmlFile.Close()
+
+		b, _ := ioutil.ReadAll(xmlFile)
+
+		var mvnProject project
+		xml.Unmarshal(b, &mvnProject)
+
+		for _, dep := range mvnProject.Dependencies {
+			if isProperty.MatchString(dep.Version)  {
+				moduleProperties[(dep.GroupId + ":" + dep.ArtifactId)] = strings.TrimRight(strings.TrimLeft(dep.Version, "${"), "}")
+			}
+		}
+	}
+	return moduleProperties
+}
+
 type project struct {
 	ModelVersion string `xml:"modelVersion"`
+	Properties []struct {
+		name xml.Name
+		value string
+	} `xml:"properties"`
 	Dependencies []struct {
 		ArtifactId string `xml:"artifactId"`
-		GroupId    string `xml:"groupId"`
-		Version    string `xml:"version"`
+		GroupId string `xml:"groupId"`
+		Version string `xml:"version"`
 	} `xml:"dependencies>dependency"`
 }
 
 type property struct {
 }
 
-func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency string, version string)
-	dependency := mver.Module
-	version := mver.Latest
+
+func mvnUpdateDep(path string, moduleVersion moduleVersion) (bool, error) { //dependency string, version string)
+	dependency := moduleVersion.Module
+	version := moduleVersion.Latest
 
 	hasUpdate := false
+	var err error
 
+	if moduleVersion.Name != "" {
 	//list all folder with pom.xml
-	cmd := exec.Command("mvn", "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
+	cmd := exec.Command("mvn",  "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
 	var out bytes.Buffer
 	var stree bytes.Buffer
 	cmd.Stdout = &out
@@ -102,9 +161,6 @@ func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency 
 		folders = append(folders, scanner.Text())
 	}
 
-	isProperty, _ := regexp.Compile(`\$\{[\w.-]+}`)
-	var propertyToReplace string
-
 	for _, folder := range folders {
 		xmlFile, err := os.Open(folder + "/pom.xml")
 		if err != nil {
@@ -118,10 +174,10 @@ func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency 
 		var mvnProject project
 		xml.Unmarshal(b, &mvnProject)
 
-		for _, dep := range mvnProject.Dependencies {
-			if isProperty.MatchString(dep.Version) && dependency == (dep.GroupId+":"+dep.ArtifactId) {
-				log.Printf("%s : %s : %s\n", folder, dep.ArtifactId, dep.Version)
-				propertyToReplace = strings.TrimRight(strings.TrimLeft(dep.Version, "${"), "}")
+			for _, property := range mvnProject.Properties {
+				if property.name.Local == moduleVersion.Name {
+					log.Println("%s : %s : %s", folder, property.name.Local, property.value)
+					var propertyToReplace = strings.TrimRight(strings.TrimLeft(moduleVersion.Name, "${"), "}")
 
 				for _, folder2 := range folders {
 					xmlFile, err := os.Open(folder2 + "/pom.xml")
@@ -139,14 +195,14 @@ func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency 
 					}
 					if _, ok := path.String(root); ok {
 						b, _ := ioutil.ReadFile(folder2 + "/pom.xml")
-						newContent := strings.Replace(string(b), "<"+
-							propertyToReplace+">"+mver.Current+
-							"</"+propertyToReplace+">",
-							"<"+propertyToReplace+">"+
-								version+
-								"</"+propertyToReplace+">", -1)
+						newContent := strings.Replace(string(b), "<" +
+								propertyToReplace+ ">"+ moduleVersion.Current+
+							"</" + propertyToReplace + ">",
+							"<" + propertyToReplace + ">" +
+								version +
+							"</" + propertyToReplace + ">", -1)
 
-						err = ioutil.WriteFile(folder2+"/pom.xml", []byte(newContent), 0)
+						err = ioutil.WriteFile(folder2 + "/pom.xml", []byte(newContent), 0)
 						if err != nil {
 							panic(err)
 						}
@@ -156,14 +212,16 @@ func mvnUpdateDep(path string, mver moduleVersion) (bool, error) { //dependency 
 			}
 		}
 	}
-	autoUpdateResult, err := Execute(path, "mvn", "org.codehaus.mojo:versions-maven-plugin:2.4:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
-
-	if strings.Contains(autoUpdateResult, fmt.Sprintf("Updated %s:jar:%s to version %s", dependency, mver.Current, version)) == true {
+    } else {
+    	var autoUpdateResult string
+        autoUpdateResult, err = Execute(path, "mvn", "org.codehaus.mojo:versions-maven-plugin:2.4:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
+	if strings.Contains(autoUpdateResult, fmt.Sprintf("Updated %s:jar:%s to version %s", dependency, moduleVersion.Current, version)) == true {
 		hasUpdate = true
 	}
+    }
 
 	if hasUpdate == true {
-		log.Printf("Updated %s:%s:jar:%s to version %s\n", mver.Module, dependency, mver.Current, version)
+		log.Printf("Updated %s:%s:jar:%s to version %s",  moduleVersion.Module, dependency, moduleVersion.Current, version)
 	}
 
 	return hasUpdate, err

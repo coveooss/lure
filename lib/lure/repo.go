@@ -19,7 +19,7 @@ func appendIfMissing(modules []moduleVersion, modulesToAdd []moduleVersion) []mo
 	for _, moduleToAdd := range modulesToAdd {
 		exist := false
 		for _, module := range modules {
-			if reflect.DeepEqual(module, moduleToAdd) {
+			if (moduleToAdd.Name != "" && module.Name == moduleToAdd.Name) || reflect.DeepEqual(module, moduleToAdd) {
 				exist = true
 				break
 			}
@@ -80,8 +80,9 @@ func checkForUpdatesJob(auth Authentication, project Project) error {
 	}
 
 	modulesToUpdate := make([]moduleVersion, 0, 0)
-	modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repo.LocalPath()+"/"+project.BasePath))
-	modulesToUpdate = appendIfMissing(modulesToUpdate, mvnOutdated(repo.LocalPath()+"/"+project.BasePath))
+	modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repo.LocalPath() + "/" + project.BasePath))
+	modulesToUpdate = appendIfMissing(modulesToUpdate, mvnOutdated(repo.LocalPath() + "/" + project.BasePath))
+	log.Printf("Modules to update : %q", modulesToUpdate)
 	pullRequests := getPullRequests(auth, project.Owner, project.Name)
 
 	for _, moduleToUpdate := range modulesToUpdate {
@@ -92,8 +93,14 @@ func checkForUpdatesJob(auth Authentication, project Project) error {
 }
 
 func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Project, repo Repo, existingPRs []PullRequest) {
-
-	title := fmt.Sprintf("Update %s dependency %s to version %s", moduleToUpdate.Type, moduleToUpdate.Module, moduleToUpdate.Latest)
+	var title string
+	var dependencyName string
+	if moduleToUpdate.Name != "" {
+		dependencyName = moduleToUpdate.Name
+	} else {
+		dependencyName = moduleToUpdate.Module
+	}
+	title = fmt.Sprintf("Update %s dependency %s to version %s", moduleToUpdate.Type, dependencyName, moduleToUpdate.Latest)
 	for _, pr := range existingPRs {
 		if pr.Title == title {
 			log.Printf("There already is a PR for: %s", title)
@@ -107,7 +114,7 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 	}
 
 	branchGUID, _ := guid.V4()
-	branch := HgSanitizeBranchName("lure-" + moduleToUpdate.Module + "-" + moduleToUpdate.Latest + "-" + branchGUID.String())
+	var branch = HgSanitizeBranchName("lure-" + dependencyName + "-" + moduleToUpdate.Latest + "-" + branchGUID.String())
 	log.Printf("Creating branch %s\n", branch)
 	if _, err := repo.Branch(branch); err != nil {
 		log.Printf("Error: \"Could not create branch\" %s", err)
@@ -127,7 +134,7 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 		return
 	}
 
-	if _, err := repo.Commit("Update " + moduleToUpdate.Module + " to " + moduleToUpdate.Latest); err != nil {
+	if _, err := repo.Commit("Update "+moduleToUpdate.Module+" to "+moduleToUpdate.Latest); err != nil {
 		log.Printf("Error: \"Could not commit\" %s", err)
 		return
 	}

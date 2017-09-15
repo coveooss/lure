@@ -8,4 +8,5 @@ type moduleVersion struct {
 	Current string
 	Latest  string
 	Wanted  string
+	Name    string
 }

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 )
 
 type Branch struct {
@@ -75,19 +76,24 @@ func getPullRequests(auth Authentication, username string, repoSlug string) []Pu
 	var list PullRequestList
 	var tmpList PullRequestList
 
-	resp, e := http.DefaultClient.Do(prRequest)
+	resp, e := getPRRequest(prRequest)
 	json.NewDecoder(resp.Body).Decode(&tmpList)
 	list.PullRequest = append(list.PullRequest, tmpList.PullRequest...)
 
 	if tmpList.Next != "" {
+
 		for tmpList.Next != "" && len(tmpList.PullRequest) != 0 {
-			prRequest.URL, _ = url.Parse(tmpList.Next)
+			queryParams, _ := url.ParseQuery(tmpList.Next)
+			nextQueryParams := prRequest.URL.Query()
+			nextQueryParams.Set("page", queryParams.Get("page"))
+			prRequest.URL.RawQuery = nextQueryParams.Encode()
 			tmpList.Next = "" //Reset
-			resp, e = http.DefaultClient.Do(prRequest)
+			resp, e = getPRRequest(prRequest)
 			json.NewDecoder(resp.Body).Decode(&tmpList)
 			list.PullRequest = append(list.PullRequest, tmpList.PullRequest...)
 		}
 	}
+	log.Printf("Found %d PRs.", len(list.PullRequest))
 
 	if e != nil {
 		log.Println("error: " + e.Error())
@@ -96,6 +102,16 @@ func getPullRequests(auth Authentication, username string, repoSlug string) []Pu
 	list.PullRequest = append(list.PullRequest, tmpList.PullRequest...)
 
 	return list.PullRequest
+}
+func getPRRequest(prRequest *http.Request) (*http.Response, error) {
+	resp, e := http.DefaultClient.Do(prRequest)
+	for !(resp.StatusCode == 200 && resp.StatusCode < 300) {
+		log.Printf("Getting '%s' PR returned %d. Retrying...", prRequest.URL, resp.StatusCode)
+		resp, e = http.DefaultClient.Do(prRequest)
+		time.Sleep(time.Second)
+	}
+	log.Printf("Getting '%s' PR returned %d.", prRequest.URL, resp.StatusCode)
+	return resp, e
 }
 
 func createPullRequest(auth Authentication, sourceBranch string, destBranch string, owner string, repo string, title string, description string) error {

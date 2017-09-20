@@ -81,8 +81,12 @@ func getPullRequests(auth Authentication, username string, repoSlug string) []Pu
 	list.PullRequest = append(list.PullRequest, tmpList.PullRequest...)
 
 	if tmpList.Next != "" {
+
 		for tmpList.Next != "" && len(tmpList.PullRequest) != 0 {
-			prRequest.URL, _ = url.Parse(tmpList.Next)
+			queryParams, _ := url.ParseQuery(tmpList.Next)
+			nextQueryParams := prRequest.URL.Query()
+			nextQueryParams.Set("page", queryParams.Get("page"))
+			prRequest.URL.RawQuery = nextQueryParams.Encode()
 			tmpList.Next = "" //Reset
 			resp, e = getPRRequest(prRequest)
 			json.NewDecoder(resp.Body).Decode(&tmpList)

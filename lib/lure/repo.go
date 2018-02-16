@@ -161,9 +161,13 @@ func Execute(pwd string, command string, params ...string) (string, error) {
 	cmd.Dir = pwd
 
 	var buff bytes.Buffer
+	var stderr bytes.Buffer
+
 	cmd.Stdout = &buff
+	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
+		log.Println(stderr.String())
 		return "", err
 	}
 

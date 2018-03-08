@@ -10,6 +10,7 @@ type Project struct {
 	Owner         string    `json:"owner"`
 	Name          string    `json:"name"`
 	DefaultBranch string    `json:"defaultBranch"`
+	BranchPrefix  string    `json:"branchPrefix"`
 	BasePath      string    `json:"basePath"`
 	Commands      []Command `json:"commands"`
 }

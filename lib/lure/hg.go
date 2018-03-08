@@ -14,7 +14,7 @@ type HgRepo struct {
 }
 
 func HgSanitizeBranchName(name string) string {
-	reg, _ := regexp.Compile("[^a-zA-Z0-9_-]+")
+	reg, _ := regexp.Compile("[^a-zA-Z0-9/_-]+")
 	safe := reg.ReplaceAllString(name, "_")
 	return safe
 }

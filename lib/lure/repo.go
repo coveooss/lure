@@ -114,7 +114,11 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 	}
 
 	branchGUID, _ := guid.V4()
-	var branch = HgSanitizeBranchName("lure-" + dependencyName + "-" + moduleToUpdate.Latest + "-" + branchGUID.String())
+	branchPrefix, branchPrefixPresent := os.LookupEnv("BRANCH_PREFIX")
+	if !branchPrefixPresent {
+		branchPrefix = "lure-"
+	}
+	var branch = HgSanitizeBranchName(branchPrefix + dependencyName + "-" + moduleToUpdate.Latest + "-" + branchGUID.String())
 	log.Printf("Creating branch %s\n", branch)
 	if _, err := repo.Branch(branch); err != nil {
 		log.Printf("Error: \"Could not create branch\" %s", err)

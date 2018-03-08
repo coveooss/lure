@@ -114,8 +114,8 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 	}
 
 	branchGUID, _ := guid.V4()
-	branchPrefix, branchPrefixPresent := os.LookupEnv("BRANCH_PREFIX")
-	if !branchPrefixPresent {
+	branchPrefix := project.BranchPrefix
+	if branchPrefix == "" {
 		branchPrefix = "lure-"
 	}
 	var branch = HgSanitizeBranchName(branchPrefix + dependencyName + "-" + moduleToUpdate.Latest + "-" + branchGUID.String())

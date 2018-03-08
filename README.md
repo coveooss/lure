@@ -23,7 +23,6 @@ You need bitbucket api-key and api-secret, see, the [bitbucket documentation](ht
 - `BITBUCKET_REPO_NAME` https ://bitbucket.org/owner/**name**
 - `BITBUCKET_REPO_OWNER` https ://bitbucket.org/**owner**/name
 - `DRY_RUN` won't create a PR
-- `BRANCH_PREFIX` Will change default branch prefix "lure-" for your own
 
 ## Develop
 

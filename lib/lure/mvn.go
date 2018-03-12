@@ -19,11 +19,14 @@ import (
 func mvnOutdated(path string) []moduleVersion {
 	cmd := exec.Command("mvn", "versions:display-dependency-updates", "-DprocessDependencyManagement=false")
 	var out bytes.Buffer
+	var stderr bytes.Buffer
 	cmd.Stdout = &out
+	cmd.Stderr = &stderr
 	cmd.Dir = path
 	err := cmd.Run()
 
 	if err != nil {
+		log.Println(stderr.String())
 		log.Fatal(err)
 	}
 
@@ -144,16 +147,16 @@ func mvnUpdateDep(path string, moduleVersion moduleVersion) (bool, error) { //de
 
 	if moduleVersion.Name != "" {
 		//list all folder with pom.xml
-		cmd := exec.Command("mvn",  "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
+		cmd := exec.Command("mvn", "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
 		var out bytes.Buffer
-		var stree bytes.Buffer
+		var stderr bytes.Buffer
 		cmd.Stdout = &out
-		cmd.Stderr = &stree
+		cmd.Stderr = &stderr
 		cmd.Dir = path
 		err := cmd.Run()
 
 		if err != nil {
-			log.Println(err)
+			log.Println(stderr.String())
 			log.Fatal(err)
 		}
 

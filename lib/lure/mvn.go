@@ -26,8 +26,10 @@ func mvnOutdated(path string) []moduleVersion {
 	err := cmd.Run()
 
 	if err != nil {
+		log.Println("Error running mvn versions:display-dependency-updates")
+		log.Println(out.String())
 		log.Println(stderr.String())
-		log.Fatal(err)
+		log.Panicln(err)
 	}
 
 	reader := bytes.NewReader(out.Bytes())
@@ -52,12 +54,12 @@ func mvnOutdated(path string) []moduleVersion {
 
 			log.Printf(">%q - %q\n", packageName, packageVersion)
 			mv := moduleVersion{
-				Type: "maven",
+				Type:    "maven",
 				Module:  lastPackage[1] + ":" + lastPackage[2],
 				Current: packageVersion[1],
 				Wanted:  packageVersion[2],
 				Latest:  packageVersion[2],
-				Name:    modulePropertyMap[lastPackage[1] + ":" + lastPackage[2]],
+				Name:    modulePropertyMap[lastPackage[1]+":"+lastPackage[2]],
 			}
 			log.Println(mv)
 			version = append(version, mv)
@@ -70,7 +72,7 @@ func mvnOutdated(path string) []moduleVersion {
 func getModulePropertyMap(path string) map[string]string {
 	var moduleProperties map[string]string = make(map[string]string)
 
-	cmd := exec.Command("mvn",  "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
+	cmd := exec.Command("mvn", "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
 	var out bytes.Buffer
 	var stree bytes.Buffer
 	cmd.Stdout = &out
@@ -79,7 +81,10 @@ func getModulePropertyMap(path string) map[string]string {
 	err := cmd.Run()
 
 	if err != nil {
+		log.Println("Error running mvn -q --also-make exec:exec -Dexec.executable=pwd")
 		fmt.Println(err)
+		log.Println(out.String())
+		fmt.Println(stree.String())
 		log.Fatal(err)
 	}
 
@@ -98,7 +103,7 @@ func getModulePropertyMap(path string) map[string]string {
 		xmlFile, err := os.Open(folder + "/pom.xml")
 		if err != nil {
 			fmt.Println("Error opening file:", err)
-			break;
+			break
 		}
 		defer xmlFile.Close()
 
@@ -108,7 +113,7 @@ func getModulePropertyMap(path string) map[string]string {
 		xml.Unmarshal(b, &mvnProject)
 
 		for _, dep := range mvnProject.Dependencies {
-			if isProperty.MatchString(dep.Version)  {
+			if isProperty.MatchString(dep.Version) {
 				moduleProperties[(dep.GroupId + ":" + dep.ArtifactId)] = strings.TrimRight(strings.TrimLeft(dep.Version, "${"), "}")
 			}
 		}
@@ -117,12 +122,12 @@ func getModulePropertyMap(path string) map[string]string {
 }
 
 type project struct {
-	ModelVersion string `xml:"modelVersion"`
-	Properties PropertyArray `xml:"properties"`
+	ModelVersion string        `xml:"modelVersion"`
+	Properties   PropertyArray `xml:"properties"`
 	Dependencies []struct {
 		ArtifactId string `xml:"artifactId"`
-		GroupId string `xml:"groupId"`
-		Version string `xml:"version"`
+		GroupId    string `xml:"groupId"`
+		Version    string `xml:"version"`
 	} `xml:"dependencies>dependency"`
 }
 
@@ -130,13 +135,12 @@ type PropertyArray struct {
 	PropertyList []Property `xml:",any"`
 }
 type Property struct {
-	XMLName	xml.Name	`xml:""`
-	Value	string		`xml:",chardata"`
+	XMLName xml.Name `xml:""`
+	Value   string   `xml:",chardata"`
 }
 
 type property struct {
 }
-
 
 func mvnUpdateDep(path string, moduleVersion moduleVersion) (bool, error) { //dependency string, version string)
 	dependency := moduleVersion.Module
@@ -203,14 +207,11 @@ func mvnUpdateDep(path string, moduleVersion moduleVersion) (bool, error) { //de
 						}
 						if _, ok := path.String(root); ok {
 							b, _ := ioutil.ReadFile(folder2 + "/pom.xml")
-							newContent := strings.Replace(string(b), "<" +
-									propertyToReplace+ ">"+ moduleVersion.Current+
-								"</" + propertyToReplace + ">",
-								"<" + propertyToReplace + ">" +
-									version +
-								"</" + propertyToReplace + ">", -1)
+							newContent := strings.Replace(string(b),
+								"<"+propertyToReplace+">"+moduleVersion.Current+"</"+propertyToReplace+">",
+								"<"+propertyToReplace+">"+version+"</"+propertyToReplace+">", -1)
 
-							err = ioutil.WriteFile(folder2 + "/pom.xml", []byte(newContent), 0)
+							err = ioutil.WriteFile(folder2+"/pom.xml", []byte(newContent), 0)
 							if err != nil {
 								panic(err)
 							}
@@ -220,16 +221,16 @@ func mvnUpdateDep(path string, moduleVersion moduleVersion) (bool, error) { //de
 				}
 			}
 		}
-    } else {
-    	var autoUpdateResult string
-        autoUpdateResult, err = Execute(path, "mvn", "org.codehaus.mojo:versions-maven-plugin:2.4:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
+	} else {
+		var autoUpdateResult string
+		autoUpdateResult, err = Execute(path, "mvn", "org.codehaus.mojo:versions-maven-plugin:2.4:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
 		if strings.Contains(autoUpdateResult, fmt.Sprintf("Updated %s:jar:%s to version %s", dependency, moduleVersion.Current, version)) == true {
 			hasUpdate = true
 		}
-    }
+	}
 
 	if hasUpdate == true {
-		log.Printf("Updated %s:%s:jar:%s to version %s",  moduleVersion.Module, dependency, moduleVersion.Current, version)
+		log.Printf("Updated %s:%s:jar:%s to version %s", moduleVersion.Module, dependency, moduleVersion.Current, version)
 	}
 
 	return hasUpdate, err

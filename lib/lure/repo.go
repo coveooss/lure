@@ -80,8 +80,10 @@ func checkForUpdatesJob(auth Authentication, project Project) error {
 	}
 
 	modulesToUpdate := make([]moduleVersion, 0, 0)
-	modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repo.LocalPath() + "/" + project.BasePath))
-	modulesToUpdate = appendIfMissing(modulesToUpdate, mvnOutdated(repo.LocalPath() + "/" + project.BasePath))
+	modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repo.LocalPath()+"/"+project.BasePath))
+
+	err, modulesToAdd := mvnOutdated(repo.LocalPath() + "/" + project.BasePath)
+	modulesToUpdate = appendIfMissing(modulesToUpdate, modulesToAdd)
 	log.Printf("Modules to update : %q", modulesToUpdate)
 	pullRequests := getPullRequests(auth, project.Owner, project.Name)
 
@@ -138,7 +140,7 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 		return
 	}
 
-	if _, err := repo.Commit("Update "+dependencyName+" to "+moduleToUpdate.Latest); err != nil {
+	if _, err := repo.Commit("Update " + dependencyName + " to " + moduleToUpdate.Latest); err != nil {
 		log.Printf("Error: \"Could not commit\" %s", err)
 		return
 	}

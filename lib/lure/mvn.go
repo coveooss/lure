@@ -16,7 +16,7 @@ import (
 	"launchpad.net/xmlpath"
 )
 
-func mvnOutdated(path string) []moduleVersion {
+func mvnOutdated(path string) (error, []moduleVersion) {
 	cmd := exec.Command("mvn", "versions:display-dependency-updates", "-DprocessDependencyManagement=false")
 	var out bytes.Buffer
 	var stderr bytes.Buffer
@@ -29,7 +29,8 @@ func mvnOutdated(path string) []moduleVersion {
 		log.Println("Error running mvn versions:display-dependency-updates")
 		log.Println(out.String())
 		log.Println(stderr.String())
-		log.Panicln(err)
+		log.Println(err)
+		return err, make([]moduleVersion, 0, 0)
 	}
 
 	reader := bytes.NewReader(out.Bytes())
@@ -66,7 +67,7 @@ func mvnOutdated(path string) []moduleVersion {
 		}
 	}
 
-	return version
+	return nil, version
 }
 
 func getModulePropertyMap(path string) map[string]string {

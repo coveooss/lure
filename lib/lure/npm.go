@@ -15,7 +15,16 @@ import (
 type packageJSON map[string]interface{}
 
 func npmOutdated(path string) []moduleVersion {
-	cmd := exec.Command("npm", "outdated")
+	log.Println("Running npm install")
+	cmd := exec.Command("npm", "install")
+	cmd.Dir = path
+	err := cmd.Run()
+	if err != nil {
+		log.Println("Could not npm install")
+		return make([]moduleVersion, 0, 0)
+	}
+
+	cmd = exec.Command("npm", "outdated")
 	var out bytes.Buffer
 	var errStrm bytes.Buffer
 	cmd.Stdout = &out

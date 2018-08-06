@@ -20,7 +20,7 @@
                 "-auth",
                 "oauth",
                 "-config",
-                "/Users/maveilleux/Repositories/SalesforceIntegrationV2/1/lure.config"
+                "${workspaceFolder}/lure.config"
             ]
         }
     ]

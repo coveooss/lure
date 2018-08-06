@@ -80,8 +80,6 @@ Environment variables:
 - `BITBUCKET_CLIENT_SECRET` the bitbucket OAuth **Secret** previously created
 - `DRY_RUN` won't create a PR
 
-(Coveo employees take a look to https://jenkins.cloud.coveo.com/job/Reveal_Lure )
-
 ## Develop
 
 ### GO environment setup

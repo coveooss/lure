@@ -70,3 +70,5 @@ out/
 .vscode/launch.json
 .sfdx
 .vscode/settings.json
+lure
+debug

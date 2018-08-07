@@ -20,7 +20,7 @@ func npmOutdated(path string) []moduleVersion {
 	cmd.Dir = path
 	err := cmd.Run()
 	if err != nil {
-		log.Println("Could not npm install")
+		log.Printf("Could not npm install: '%s'\n", err)
 		return make([]moduleVersion, 0, 0)
 	}
 
@@ -35,7 +35,7 @@ func npmOutdated(path string) []moduleVersion {
 	reader := bytes.NewReader(out.Bytes())
 	scanner := bufio.NewScanner(reader)
 
-	npmRegex, _ := regexp.Compile(`([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s*`)
+	npmRegex, _ := regexp.Compile(`([^|\s]+)\s+([^|\s]+)\s+([^|\s]+)\s+([^|\s]+)\s*`)
 
 	lineIndex := 0
 
@@ -50,7 +50,6 @@ func npmOutdated(path string) []moduleVersion {
 				Current: result[2],
 				Latest:  result[4],
 			}
-
 			wantedVersion, _ := semver.Parse(mv.Wanted)
 			latestVersion, _ := semver.Parse(mv.Latest)
 
@@ -85,7 +84,22 @@ func updateJSON(parsedPackageJSON *packageJSON, key string, module string, versi
 	_, ok := (*parsedPackageJSON)[key]
 	if ok {
 		dependencies := (*parsedPackageJSON)[key].(map[string]interface{})
-		dependencies[module] = version
-		(*parsedPackageJSON)[key] = dependencies
+
+		// https://docs.npmjs.com/misc/semver#x-ranges-12x-1x-12-
+		r, _ := regexp.Compile("^(\\^|~).*")
+
+		// Only update the dependency if it exists already.
+		if dependencies[module] != nil {
+			// Check for version operators and reuse them
+			operators := r.FindStringSubmatch(dependencies[module].(string))
+			if len(operators) > 0 {
+				// The index zero is the whole match, index 1 is the first group match.
+				version = operators[1] + version
+			}
+
+			dependencies[module] = version
+			(*parsedPackageJSON)[key] = dependencies
+		}
+
 	}
 }

@@ -67,3 +67,6 @@ bin/
 out/
 .idea/dictionaries/
 .idea/inspectionProfiles/
+.vscode/launch.json
+.sfdx
+.vscode/settings.json

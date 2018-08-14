@@ -109,7 +109,4 @@ Build:
 go build lure.go
 ```
 
-Build for release:
-```sh
-env GOOS=linux GOARCH=amd64 go build -v lure.go
-```
+For more information about building, you can check the BUILD.md.

@@ -35,7 +35,7 @@ func npmOutdated(path string) []moduleVersion {
 	reader := bytes.NewReader(out.Bytes())
 	scanner := bufio.NewScanner(reader)
 
-	npmRegex, _ := regexp.Compile(`([^|\s]+)\s+([^|\s]+)\s+([^|\s]+)\s+([^|\s]+)\s*`)
+	npmRegex, _ := regexp.Compile(`([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s*`)
 
 	lineIndex := 0
 
@@ -74,7 +74,13 @@ func readPackageJSON(dir string, module string, version string) (bool, error) {
 	updateJSON(&parsedPackageJSON, "devDependencies", module, version)
 	updateJSON(&parsedPackageJSON, "optionalDependencies", module, version)
 
-	updatedJSON, _ := json.MarshalIndent(&parsedPackageJSON, "", "  ")
+	// json.Marshal HTML encode the characters. We need to use a custom encoder to fix that.
+	buf := new(bytes.Buffer)
+	enc := json.NewEncoder(buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	enc.Encode(parsedPackageJSON)
+	updatedJSON := buf.Bytes()
 	ioutil.WriteFile(dir+"/package.json", updatedJSON, 0770)
 
 	return true, nil
@@ -85,21 +91,29 @@ func updateJSON(parsedPackageJSON *packageJSON, key string, module string, versi
 	if ok {
 		dependencies := (*parsedPackageJSON)[key].(map[string]interface{})
 
-		// https://docs.npmjs.com/misc/semver#x-ranges-12x-1x-12-
-		r, _ := regexp.Compile("^(\\^|~).*")
-
 		// Only update the dependency if it exists already.
 		if dependencies[module] != nil {
 			// Check for version operators and reuse them
-			operators := r.FindStringSubmatch(dependencies[module].(string))
-			if len(operators) > 0 {
-				// The index zero is the whole match, index 1 is the first group match.
-				version = operators[1] + version
-			}
+			operator := getRangeOperator(dependencies[module].(string))
+			version = operator + version
 
 			dependencies[module] = version
 			(*parsedPackageJSON)[key] = dependencies
 		}
 
 	}
+}
+
+func getRangeOperator(version string) string {
+	// https://docs.npmjs.com/misc/semver#x-ranges-12x-1x-12-
+	r, _ := regexp.Compile("^(\\^|~).*")
+
+	operators := r.FindStringSubmatch(version)
+
+	if len(operators) > 0 {
+		// The index zero is the whole match, index 1 is the first group match.
+		return operators[1]
+	}
+
+	return ""
 }

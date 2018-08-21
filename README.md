@@ -108,3 +108,5 @@ Build:
 ```sh
 go build lure.go
 ```
+
+For more information about building, you can check the BUILD.md.

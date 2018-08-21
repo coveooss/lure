@@ -20,7 +20,7 @@ func npmOutdated(path string) []moduleVersion {
 	cmd.Dir = path
 	err := cmd.Run()
 	if err != nil {
-		log.Println("Could not npm install")
+		log.Printf("Could not npm install: '%s'\n", err)
 		return make([]moduleVersion, 0, 0)
 	}
 
@@ -50,7 +50,6 @@ func npmOutdated(path string) []moduleVersion {
 				Current: result[2],
 				Latest:  result[4],
 			}
-
 			wantedVersion, _ := semver.Parse(mv.Wanted)
 			latestVersion, _ := semver.Parse(mv.Latest)
 
@@ -75,7 +74,13 @@ func readPackageJSON(dir string, module string, version string) (bool, error) {
 	updateJSON(&parsedPackageJSON, "devDependencies", module, version)
 	updateJSON(&parsedPackageJSON, "optionalDependencies", module, version)
 
-	updatedJSON, _ := json.MarshalIndent(&parsedPackageJSON, "", "  ")
+	// json.Marshal HTML encode the characters. We need to use a custom encoder to fix that.
+	buf := new(bytes.Buffer)
+	enc := json.NewEncoder(buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	enc.Encode(parsedPackageJSON)
+	updatedJSON := buf.Bytes()
 	ioutil.WriteFile(dir+"/package.json", updatedJSON, 0770)
 
 	return true, nil
@@ -85,7 +90,30 @@ func updateJSON(parsedPackageJSON *packageJSON, key string, module string, versi
 	_, ok := (*parsedPackageJSON)[key]
 	if ok {
 		dependencies := (*parsedPackageJSON)[key].(map[string]interface{})
-		dependencies[module] = version
-		(*parsedPackageJSON)[key] = dependencies
+
+		// Only update the dependency if it exists already.
+		if dependencies[module] != nil {
+			// Check for version operators and reuse them
+			operator := getRangeOperator(dependencies[module].(string))
+			version = operator + version
+
+			dependencies[module] = version
+			(*parsedPackageJSON)[key] = dependencies
+		}
+
 	}
+}
+
+func getRangeOperator(version string) string {
+	// https://docs.npmjs.com/misc/semver#x-ranges-12x-1x-12-
+	r, _ := regexp.Compile("^(\\^|~).*")
+
+	operators := r.FindStringSubmatch(version)
+
+	if len(operators) > 0 {
+		// The index zero is the whole match, index 1 is the first group match.
+		return operators[1]
+	}
+
+	return ""
 }

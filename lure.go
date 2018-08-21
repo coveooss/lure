@@ -33,9 +33,13 @@ func main() {
 
 	config, err := loadConfig(*confFile)
 	if err != nil {
-		log.Printf("Error Loading Config: %s\n", err)
+		log.Printf("Error Loading Config with path '%s': %s\n", *confFile, err)
 		os.Exit(1)
 	}
+	if os.Getenv("DRY_RUN") == "1" {
+		log.Println("Running in DryRun mode, not doing the pull request nor pushing the changes")
+	}
+
 	log.Printf("Config: %s\n", config)
 
 	switch *mode {

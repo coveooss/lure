@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
+	"os"
 	"os/exec"
 	"regexp"
 
@@ -15,6 +16,12 @@ import (
 type packageJSON map[string]interface{}
 
 func npmOutdated(path string) []moduleVersion {
+	const packageJSONDefaultFileName = "package.json"
+	if _, err := os.Stat(path + packageJSONDefaultFileName); os.IsNotExist(err) {
+		log.Println(packageJSONDefaultFileName + " doesn't exists, skipping npm update")
+		return make([]moduleVersion, 0, 0)
+	}
+
 	log.Println("Running npm install")
 	cmd := exec.Command("npm", "install")
 	cmd.Dir = path

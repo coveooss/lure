@@ -102,9 +102,7 @@ func getPullRequests(auth Authentication, username string, repoSlug string) []Pu
 	return list.PullRequest
 }
 func getPRRequest(prRequest *http.Request) (*PullRequestList, error) {
-	client := pester.New()
-	client.MaxRetries = 5
-	client.Backoff = pester.ExponentialBackoff
+	client := getHTTPClient()
 	resp, err := client.Do(prRequest)
 
 	if err != nil {
@@ -151,9 +149,7 @@ func createPullRequest(auth Authentication, sourceBranch string, destBranch stri
 
 	log.Printf("%v\n", prRequest)
 
-	client := pester.New()
-	client.MaxRetries = 5
-	client.Backoff = pester.ExponentialBackoff
+	client := getHTTPClient()
 	resp, err := client.Do(prRequest)
 
 	if err != nil {
@@ -166,4 +162,11 @@ func createPullRequest(auth Authentication, sourceBranch string, destBranch stri
 	io.Copy(os.Stdout, resp.Body)
 
 	return nil
+}
+
+func getHTTPClient() *pester.Client {
+	client := pester.New()
+	client.MaxRetries = 5
+	client.Backoff = pester.ExponentialBackoff
+	return client
 }

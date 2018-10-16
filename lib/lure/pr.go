@@ -9,7 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"time"
+
+	"github.com/sethgrid/pester"
 )
 
 type Branch struct {
@@ -50,7 +51,7 @@ func createApiRequest(auth Authentication, method string, path string, body io.R
 
 	request, err := http.NewRequest(method, url, body)
 	if err != nil {
-		return request, err
+		return nil, err
 	}
 
 	switch auth := auth.(type) {
@@ -74,10 +75,8 @@ func getPullRequests(auth Authentication, username string, repoSlug string) []Pu
 	prRequest.Header.Add("Content-Type", "application/json")
 
 	var list PullRequestList
-	var tmpList PullRequestList
 
-	resp, e := getPRRequest(prRequest)
-	json.NewDecoder(resp.Body).Decode(&tmpList)
+	tmpList, e := getPRRequest(prRequest)
 	list.PullRequest = append(list.PullRequest, tmpList.PullRequest...)
 
 	if tmpList.Next != "" {
@@ -88,8 +87,7 @@ func getPullRequests(auth Authentication, username string, repoSlug string) []Pu
 			nextQueryParams.Set("page", queryParams.Get("page"))
 			prRequest.URL.RawQuery = nextQueryParams.Encode()
 			tmpList.Next = "" //Reset
-			resp, e = getPRRequest(prRequest)
-			json.NewDecoder(resp.Body).Decode(&tmpList)
+			tmpList, e = getPRRequest(prRequest)
 			list.PullRequest = append(list.PullRequest, tmpList.PullRequest...)
 		}
 	}
@@ -103,15 +101,22 @@ func getPullRequests(auth Authentication, username string, repoSlug string) []Pu
 
 	return list.PullRequest
 }
-func getPRRequest(prRequest *http.Request) (*http.Response, error) {
-	resp, e := http.DefaultClient.Do(prRequest)
-	for !(resp.StatusCode == 200 && resp.StatusCode < 300) {
-		log.Printf("Getting '%s' PR returned %d. Retrying...", prRequest.URL, resp.StatusCode)
-		resp, e = http.DefaultClient.Do(prRequest)
-		time.Sleep(time.Second)
+func getPRRequest(prRequest *http.Request) (*PullRequestList, error) {
+	client := getHTTPClient()
+	resp, err := client.Do(prRequest)
+
+	if err != nil {
+		log.Println("Error getting PR Requests", client.LogString())
+		return nil, err
 	}
+
+	var prList PullRequestList
+	json.NewDecoder(resp.Body).Decode(&prList)
+
+	defer resp.Body.Close()
+
 	log.Printf("Getting '%s' PR returned %d.", prRequest.URL, resp.StatusCode)
-	return resp, e
+	return &prList, nil
 }
 
 func createPullRequest(auth Authentication, sourceBranch string, destBranch string, owner string, repo string, title string, description string) error {
@@ -136,6 +141,7 @@ func createPullRequest(auth Authentication, sourceBranch string, destBranch stri
 
 	prRequest, err := createApiRequest(auth, "POST", fmt.Sprintf("/%s/%s/pullrequests/", owner, repo), buf)
 	if err != nil {
+		log.Println("Could not create a pull request")
 		return err
 	}
 
@@ -143,11 +149,24 @@ func createPullRequest(auth Authentication, sourceBranch string, destBranch stri
 
 	log.Printf("%v\n", prRequest)
 
-	resp, err := http.DefaultClient.Do(prRequest)
+	client := getHTTPClient()
+	resp, err := client.Do(prRequest)
+
 	if err != nil {
+		log.Println("Error getting PR Requests", client.LogString())
 		return err
 	}
 
+	defer resp.Body.Close()
+
 	io.Copy(os.Stdout, resp.Body)
+
 	return nil
+}
+
+func getHTTPClient() *pester.Client {
+	client := pester.New()
+	client.MaxRetries = 5
+	client.Backoff = pester.ExponentialBackoff
+	return client
 }

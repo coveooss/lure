@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"runtime"
 
-	"github.com/coveo/lure/lib/lure"
+	"./lib/lure"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/bitbucket"
 )

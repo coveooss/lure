@@ -18,7 +18,7 @@ type packageJSON map[string]interface{}
 func npmOutdated(path string) []moduleVersion {
 	const packageJSONDefaultFileName = "package.json"
 	if _, err := os.Stat(path + packageJSONDefaultFileName); os.IsNotExist(err) {
-		log.Println(packageJSONDefaultFileName + " doesn't exists, skipping npm update")
+		log.Println(packageJSONDefaultFileName + " doesn't exist, skipping npm update")
 		return make([]moduleVersion, 0, 0)
 	}
 

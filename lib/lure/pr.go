@@ -31,6 +31,7 @@ type PullRequest struct {
 	Source            Source `json:"source"`
 	Dest              Dest   `json:"destination"`
 	CloseSourceBranch bool   `json:"close_source_branch"`
+	State             string `json:"state"`
 }
 
 type PullRequestList struct {

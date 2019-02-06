@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"strings"
 
 	"github.com/vsekhar/govtil/guid"
 )
@@ -91,6 +92,8 @@ func checkForUpdatesJob(auth Authentication, project Project) error {
 		updateModule(auth, moduleToUpdate, project, repo, pullRequests)
 	}
 
+	log.Printf("Info: Check for updates done.")
+
 	return nil
 }
 
@@ -102,11 +105,27 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 	} else {
 		dependencyName = moduleToUpdate.Module
 	}
-	title = fmt.Sprintf("Update %s dependency %s to version %s", moduleToUpdate.Type, dependencyName, moduleToUpdate.Latest)
+
+	titlePrefix := fmt.Sprintf("Update %s dependency %s to version ", moduleToUpdate.Type, dependencyName)
+	title = fmt.Sprintf(titlePrefix+"%s", moduleToUpdate.Latest)
+
+	updateVersion, err := ParseVersion(moduleToUpdate.Latest)
+	updateVersionComparable := err == nil
+
 	for _, pr := range existingPRs {
 		if pr.Title == title {
 			log.Printf("There already is a PR for: %s", title)
 			return
+		}
+
+		if pr.State == "OPEN" && updateVersionComparable && strings.HasPrefix(pr.Title, titlePrefix) {
+			versionStr := strings.TrimPrefix(pr.Title, titlePrefix)
+			prVersion, err := ParseVersion(versionStr)
+
+			if err == nil && updateVersion.IsLessOrEqualThan(prVersion) {
+				log.Printf("There already is a PR with more recent version '%s' for: %s", prVersion, title)
+				return
+			}
 		}
 	}
 

@@ -2,12 +2,13 @@ package lure
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"reflect"
+	"regexp"
+	"strings"
 
 	"github.com/vsekhar/govtil/guid"
 )
@@ -53,7 +54,7 @@ func cloneRepo(hgAuth Authentication, project Project) (Repo, error) {
 		repo, err = GitClone(hgAuth, projectRemote, repoPath)
 	default:
 		repo = nil
-		err = errors.New(fmt.Sprintf("Unknown VCS '%s' - must be one of %s, %s", project.Vcs, Git, Hg))
+		err = fmt.Errorf("Unknown VCS '%s' - must be one of %s, %s", project.Vcs, Git, Hg)
 	}
 	if err != nil {
 		log.Printf("Error: \"Could not clone\" %s", err)
@@ -76,7 +77,7 @@ func checkForUpdatesJob(auth Authentication, project Project) error {
 
 	log.Printf("Info: switching %s to default branch: %s", repo.RemotePath(), project.DefaultBranch)
 	if _, err := repo.Update(project.DefaultBranch); err != nil {
-		return errors.New(fmt.Sprintf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err))
+		return fmt.Errorf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err)
 	}
 
 	modulesToUpdate := make([]moduleVersion, 0, 0)
@@ -85,11 +86,17 @@ func checkForUpdatesJob(auth Authentication, project Project) error {
 	err, modulesToAdd := mvnOutdated(repo.LocalPath() + "/" + project.BasePath)
 	modulesToUpdate = appendIfMissing(modulesToUpdate, modulesToAdd)
 	log.Printf("Modules to update : %q", modulesToUpdate)
-	pullRequests := getPullRequests(auth, project.Owner, project.Name)
+
+	ignoreDeclinedPRs := os.Getenv("IGNORE_DECLINED_PR") == "1"
+	pullRequests := getPullRequests(auth, project.Owner, project.Name, ignoreDeclinedPRs)
 
 	for _, moduleToUpdate := range modulesToUpdate {
 		updateModule(auth, moduleToUpdate, project, repo, pullRequests)
 	}
+
+	log.Printf("Info: Check for updates done.")
+
+	cleanupUpdateBranches(auth, project, repo)
 
 	return nil
 }
@@ -182,4 +189,133 @@ func Execute(pwd string, command string, params ...string) (string, error) {
 	log.Printf("\t%s\n", out)
 
 	return out, nil
+}
+
+func cleanupUpdateBranches(auth Authentication, project Project, repo Repo) error {
+
+	if project.Vcs != Hg {
+		return nil
+	}
+
+	trashBranch := project.TrashBranch
+	if trashBranch == "" {
+		log.Printf("Info: Project has no trash branch defined. Skipping cleanup.")
+		return nil
+	}
+
+	log.Printf("Info: Cleaning up lure branches with no associated PRs.")
+
+	out, err := repo.Cmd("branches", "--active", "--template", "{branches}\n")
+	if err != nil {
+		return err
+	}
+
+	branches := strings.Split(out, "\n")
+	branchPrefix := project.BranchPrefix
+	if branchPrefix == "" {
+		branchPrefix = "lure-"
+	}
+	msgRegex, err := regexp.Compile(`Update (\S*) to (\S*)`)
+	if err != nil {
+		return err
+	}
+
+	existingPRs := getPullRequests(auth, project.Owner, project.Name, true)
+
+	for _, branch := range branches {
+		if strings.HasPrefix(branch, branchPrefix) {
+
+			dead, err := isBranchDead(repo, branch, existingPRs, msgRegex)
+			if err != nil {
+				continue
+			}
+
+			if dead {
+				closeDeadBranch(repo, branch, trashBranch)
+			}
+		}
+	}
+
+	if os.Getenv("DRY_RUN") == "1" {
+		log.Println("Running in DryRun mode, not doing the pull request nor pushing the changes")
+	} else {
+		if _, err := repo.Push(); err != nil {
+			return err
+		}
+	}
+
+	log.Printf("Info: Lure branches clean up done.")
+
+	return nil
+}
+
+func isBranchDead(repo Repo, branch string, existingPRs []PullRequest, msgRegex *regexp.Regexp) (bool, error) {
+
+	// Get dependency name and version from latest commit message
+	message, err := repo.Cmd("log", "--limit", "1", "--branch", branch, "--template", "{desc}")
+	if err != nil {
+		return false, err
+	}
+
+	matches := msgRegex.FindStringSubmatch(message)
+	if len(matches) != 3 {
+		return false, err
+	}
+	dependencyName := matches[1]
+	dependencyVersion := matches[2]
+
+	// Look for a matching opened PR
+	titleSuffix := fmt.Sprintf("dependency %s to version %s", dependencyName, dependencyVersion)
+	foundPR := false
+	for _, pr := range existingPRs {
+		if pr.State == "OPEN" && strings.Contains(pr.Title, titleSuffix) {
+			foundPR = true
+			break
+		}
+	}
+
+	return !foundPR, nil
+}
+
+func closeDeadBranch(repo Repo, branch string, trashBranch string) error {
+
+	log.Printf("Closing branch %s.", branch)
+
+	if _, err := repo.Cmd("update", "-C", branch); err != nil {
+		log.Printf("Error: \"Could not switch to branch %s\" %s", branch, err)
+		return err
+	}
+
+	if _, err := repo.Cmd("commit", "-m", "Close branch "+branch, "--close-branch"); err != nil {
+		log.Printf("Error: \"Could not commit\" %s", err)
+		return err
+	}
+
+	if _, err := repo.Update(trashBranch); err != nil {
+		log.Printf("Error: \"Could not switch to branch %s\" %s", trashBranch, err)
+		return err
+	}
+
+	if err := fakeMerge(repo, branch, trashBranch); err != nil {
+		log.Printf("Error: \"Could not fake merge branch %s to branch %s\" %s", branch, trashBranch, err)
+		return err
+	}
+
+	return nil
+}
+
+func fakeMerge(repo Repo, branch string, trashBranch string) error {
+
+	repo.Cmd("-y", "merge", "--tool=internal:fail", branch) // Always produces an err
+	if _, err := repo.Cmd("revert", "--all", "--rev", "."); err != nil {
+		return err
+	}
+	if _, err := repo.Cmd("resolve", "-a", "-m"); err != nil {
+		return err
+	}
+	if _, err := repo.Commit(fmt.Sprintf("Fake merge to close %s into %s", branch, trashBranch)); err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -11,6 +11,7 @@ type Project struct {
 	Name          string    `json:"name"`
 	DefaultBranch string    `json:"defaultBranch"`
 	BranchPrefix  string    `json:"branchPrefix"`
+	TrashBranch   string    `json:"trashBranch"`
 	BasePath      string    `json:"basePath"`
 	Commands      []Command `json:"commands"`
 }

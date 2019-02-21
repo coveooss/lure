@@ -113,6 +113,7 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 	updateVersionComparable := err == nil
 
 	for _, pr := range existingPRs {
+
 		if pr.Title == title {
 			log.Printf("There already is a PR for: %s", title)
 			return
@@ -122,9 +123,13 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 			versionStr := strings.TrimPrefix(pr.Title, titlePrefix)
 			prVersion, err := ParseVersion(versionStr)
 
-			if err == nil && updateVersion.IsLessOrEqualThan(prVersion) {
-				log.Printf("There already is a PR with more recent version '%s' for: %s", prVersion, title)
-				return
+			if err == nil && updateVersion.IsGreaterThan(prVersion) {
+				if os.Getenv("DRY_RUN") == "1" {
+					log.Printf("Running in DryRun mode. PR '%s' made for older version '%s' would be declined.", pr.Title, prVersion)
+				} else {
+					log.Printf("Declining PR '%s' made for older version '%s'.", pr.Title, prVersion)
+					declinePullRequest(auth, project.Owner, project.Name, pr.ID)
+				}
 			}
 		}
 	}

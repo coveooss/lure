@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/sethgrid/pester"
 )
@@ -26,6 +27,7 @@ type Dest struct {
 }
 
 type PullRequest struct {
+	ID                int    `json:"id"`
 	Title             string `json:"title"`
 	Description       string `json:"description"`
 	Source            Source `json:"source"`
@@ -155,6 +157,34 @@ func createPullRequest(auth Authentication, sourceBranch string, destBranch stri
 
 	if err != nil {
 		log.Println("Error getting PR Requests", client.LogString())
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	io.Copy(os.Stdout, resp.Body)
+
+	return nil
+}
+
+func declinePullRequest(auth Authentication, username string, repoSlug string, pullRequestID int) error {
+
+	bitBucketPath := fmt.Sprintf("/%s/%s/pullrequests/%d/decline", username, repoSlug, pullRequestID)
+	prRequest, err := createApiRequest(auth, "POST", bitBucketPath, strings.NewReader("{}"))
+	if err != nil {
+		log.Println("Could not decline pull request")
+		return err
+	}
+
+	prRequest.Header.Add("Content-Type", "application/json")
+
+	log.Printf("%v\n", prRequest)
+
+	client := getHTTPClient()
+	resp, err := client.Do(prRequest)
+
+	if err != nil {
+		log.Println("Error declining PR Request", client.LogString())
 		return err
 	}
 

@@ -71,6 +71,8 @@ func runMain(config *lure.LureConfig, auth lure.Authentication) {
 	for _, project := range config.Projects {
 		log.Println(fmt.Sprintf("Project: %s/%s", project.Owner, project.Name))
 
+		lure.InitProjectDefaultValues(&project)
+
 		for _, command := range project.Commands {
 			log.Println(fmt.Sprintf("\tCommand: %s", command.Name))
 			commandFunc := getCommand(command.Name)

@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
-	"regexp"
 	"strings"
 
 	"github.com/vsekhar/govtil/guid"
@@ -49,7 +48,7 @@ func cloneRepo(hgAuth Authentication, project Project) (Repo, error) {
 
 	switch project.Vcs {
 	case Hg:
-		repo, err = HgClone(hgAuth, projectRemote, repoPath)
+		repo, err = HgClone(hgAuth, projectRemote, repoPath, project.TrashBranch)
 	case Git:
 		repo, err = GitClone(hgAuth, projectRemote, repoPath)
 	default:
@@ -124,9 +123,6 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 
 	branchGUID, _ := guid.V4()
 	branchPrefix := project.BranchPrefix
-	if branchPrefix == "" {
-		branchPrefix = "lure-"
-	}
 	var branch = HgSanitizeBranchName(branchPrefix + dependencyName + "-" + moduleToUpdate.Latest + "-" + branchGUID.String())
 	log.Printf("Creating branch %s\n", branch)
 	if _, err := repo.Branch(branch); err != nil {
@@ -212,26 +208,13 @@ func cleanupUpdateBranches(auth Authentication, project Project, repo Repo) erro
 
 	branches := strings.Split(out, "\n")
 	branchPrefix := project.BranchPrefix
-	if branchPrefix == "" {
-		branchPrefix = "lure-"
-	}
-	msgRegex, err := regexp.Compile(`Update (\S*) to (\S*)`)
-	if err != nil {
-		return err
-	}
 
-	existingPRs := getPullRequests(auth, project.Owner, project.Name, true)
+	existingPRs := getPullRequests(auth, project.Owner, project.Name, false)
 
 	for _, branch := range branches {
 		if strings.HasPrefix(branch, branchPrefix) {
-
-			dead, err := isBranchDead(repo, branch, existingPRs, msgRegex)
-			if err != nil {
-				continue
-			}
-
-			if dead {
-				closeDeadBranch(repo, branch, trashBranch)
+			if isBranchDead(repo, branch, existingPRs) {
+				repo.CloseBranch(branch)
 			}
 		}
 	}
@@ -249,73 +232,13 @@ func cleanupUpdateBranches(auth Authentication, project Project, repo Repo) erro
 	return nil
 }
 
-func isBranchDead(repo Repo, branch string, existingPRs []PullRequest, msgRegex *regexp.Regexp) (bool, error) {
+func isBranchDead(repo Repo, branch string, existingPRs []PullRequest) bool {
 
-	// Get dependency name and version from latest commit message
-	message, err := repo.Cmd("log", "--limit", "1", "--branch", branch, "--template", "{desc}")
-	if err != nil {
-		return false, err
-	}
-
-	matches := msgRegex.FindStringSubmatch(message)
-	if len(matches) != 3 {
-		return false, err
-	}
-	dependencyName := matches[1]
-	dependencyVersion := matches[2]
-
-	// Look for a matching opened PR
-	titleSuffix := fmt.Sprintf("dependency %s to version %s", dependencyName, dependencyVersion)
-	foundPR := false
 	for _, pr := range existingPRs {
-		if pr.State == "OPEN" && strings.Contains(pr.Title, titleSuffix) {
-			foundPR = true
-			break
+		if pr.State == "DECLINED" && branch == pr.Source.Branch.Name {
+			return true
 		}
 	}
 
-	return !foundPR, nil
-}
-
-func closeDeadBranch(repo Repo, branch string, trashBranch string) error {
-
-	log.Printf("Closing branch %s.", branch)
-
-	if _, err := repo.Cmd("update", "-C", branch); err != nil {
-		log.Printf("Error: \"Could not switch to branch %s\" %s", branch, err)
-		return err
-	}
-
-	if _, err := repo.Cmd("commit", "-m", "Close branch "+branch, "--close-branch"); err != nil {
-		log.Printf("Error: \"Could not commit\" %s", err)
-		return err
-	}
-
-	if _, err := repo.Update(trashBranch); err != nil {
-		log.Printf("Error: \"Could not switch to branch %s\" %s", trashBranch, err)
-		return err
-	}
-
-	if err := fakeMerge(repo, branch, trashBranch); err != nil {
-		log.Printf("Error: \"Could not fake merge branch %s to branch %s\" %s", branch, trashBranch, err)
-		return err
-	}
-
-	return nil
-}
-
-func fakeMerge(repo Repo, branch string, trashBranch string) error {
-
-	repo.Cmd("-y", "merge", "--tool=internal:fail", branch) // Always produces an err
-	if _, err := repo.Cmd("revert", "--all", "--rev", "."); err != nil {
-		return err
-	}
-	if _, err := repo.Cmd("resolve", "-a", "-m"); err != nil {
-		return err
-	}
-	if _, err := repo.Commit(fmt.Sprintf("Fake merge to close %s into %s", branch, trashBranch)); err != nil {
-		return err
-	}
-
-	return nil
+	return false
 }

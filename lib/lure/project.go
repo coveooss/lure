@@ -19,3 +19,14 @@ type Project struct {
 type LureConfig struct {
 	Projects []Project `json:"projects"`
 }
+
+const (
+	defaultBranchPrefix string = "lure-"
+)
+
+// InitProjectDefault initializes project with default values as necessary
+func InitProjectDefaultValues(project *Project) {
+	if project.BranchPrefix == "" {
+		project.BranchPrefix = "lure-"
+	}
+}

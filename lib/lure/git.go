@@ -2,6 +2,7 @@ package lure
 
 import (
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
 )
@@ -83,4 +84,10 @@ func (gitRepo GitRepo) LogCommitsBetween(baseRev string, secondRev string) ([]st
 
 	lines := strings.Split(out, "\n")
 	return append(lines[:0], lines[:len(lines)-1]...), nil
+}
+
+func (gitRepo GitRepo) CloseBranch(branch string) error {
+	log.Printf("Closing branch %s.", branch)
+	_, err := gitRepo.Cmd("branch", "-d", GitSanitizeBranchName(branch))
+	return err
 }

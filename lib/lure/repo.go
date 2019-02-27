@@ -118,7 +118,7 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 	var prAlreadyExists = false
 	for _, pr := range existingPRs {
 		if strings.HasPrefix(pr.Source.Branch.Name, dependencyBranchVersionPrefix) {
-			log.Printf("There already is a PR for: %s, branch name is: %s.", title, pr.Source.Branch.Name)
+			log.Printf("There already is a PR for: '%s'. The branch name is: %s.", title, pr.Source.Branch.Name)
 			prAlreadyExists = true
 			continue
 		}

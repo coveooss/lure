@@ -33,4 +33,10 @@ func InitProjectDefaultValues(project *Project) {
 	if project.TrashBranch == "" {
 		project.TrashBranch = defaultTrashBranch
 	}
+	for _, cmd := range project.Commands {
+		_, ok := cmd.Args["commitMessage"]
+		if !ok {
+			cmd.Args["commitMessage"] = "Update {{.module}} to {{.version}}"
+		}
+	}
 }

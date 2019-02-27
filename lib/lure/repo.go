@@ -8,9 +8,22 @@ import (
 	"os/exec"
 	"reflect"
 	"strings"
+	"text/template"
 
 	"github.com/vsekhar/govtil/guid"
 )
+
+// Tprintf passed template string is formatted using its operands and returns the resulting string.
+// Spaces are added between operands when neither is a string.
+// https://play.golang.org/p/COHKlB2RML
+func Tprintf(tmpl string, data map[string]interface{}) string {
+	t := template.Must(template.New(tmpl).Parse(tmpl))
+	buf := &bytes.Buffer{}
+	if err := t.Execute(buf, data); err != nil {
+		return ""
+	}
+	return buf.String()
+}
 
 // This part interesting
 // https://github.com/golang/go/blob/1441f76938bf61a2c8c2ed1a65082ddde0319633/src/cmd/go/vcs.go
@@ -64,10 +77,11 @@ func cloneRepo(hgAuth Authentication, project Project) (Repo, error) {
 }
 
 func CheckForUpdatesJobCommand(auth Authentication, project Project, args map[string]string) error {
-	return checkForUpdatesJob(auth, project)
+	return checkForUpdatesJob(auth, project, args["commitMessage"])
 }
 
-func checkForUpdatesJob(auth Authentication, project Project) error {
+func checkForUpdatesJob(auth Authentication, project Project, commitMessage string) error {
+
 	repo, err := cloneRepo(auth, project)
 	if err != nil {
 		return err
@@ -92,7 +106,7 @@ func checkForUpdatesJob(auth Authentication, project Project) error {
 	}
 
 	for _, moduleToUpdate := range modulesToUpdate {
-		updateModule(auth, moduleToUpdate, project, repo, pullRequests)
+		updateModule(auth, moduleToUpdate, project, repo, pullRequests, commitMessage)
 	}
 
 	err = closeOldBranchesWithoutOpenPR(auth, project, repo)
@@ -105,7 +119,7 @@ func checkForUpdatesJob(auth Authentication, project Project) error {
 	return nil
 }
 
-func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Project, repo Repo, existingPRs []PullRequest) {
+func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Project, repo Repo, existingPRs []PullRequest, commitMessage string) {
 	var dependencyName string
 	if moduleToUpdate.Name != "" {
 		dependencyName = moduleToUpdate.Name
@@ -169,7 +183,7 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 		return
 	}
 
-	if _, err := repo.Commit("Update " + dependencyName + " to " + moduleToUpdate.Latest); err != nil {
+	if _, err := repo.Commit(Tprintf(commitMessage, map[string]interface{}{"module": moduleToUpdate.Module, "version": moduleToUpdate.Latest})); err != nil {
 		log.Printf("Error: \"Could not commit\" %s", err)
 		return
 	}

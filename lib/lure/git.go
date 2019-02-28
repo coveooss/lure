@@ -86,8 +86,23 @@ func (gitRepo GitRepo) LogCommitsBetween(baseRev string, secondRev string) ([]st
 	return append(lines[:0], lines[:len(lines)-1]...), nil
 }
 
+func (gitRepo GitRepo) GetActiveBranches() ([]string, error) {
+	out, err := gitRepo.Cmd("branch", "-r")
+	if err != nil {
+		return nil, err
+	}
+	// remove first line which is always origin/HEAD -> origin/master and last empty line (trim space)
+	branches := strings.Split(strings.TrimSpace(out), "\n")[1:]
+
+	// removing the remote prefix (origin/ most of the time)
+	for i := range branches {
+		branches[i] = strings.SplitN(branches[i], "/", 2)[1]
+	}
+	return branches, nil
+}
+
 func (gitRepo GitRepo) CloseBranch(branch string) error {
 	log.Printf("Closing branch %s.", branch)
-	_, err := gitRepo.Cmd("branch", "-d", GitSanitizeBranchName(branch))
+	_, err := gitRepo.Cmd("push", gitRepo.remotePath, "--delete", branch)
 	return err
 }

@@ -22,11 +22,15 @@ type LureConfig struct {
 
 const (
 	defaultBranchPrefix string = "lure-"
+	defaultTrashBranch  string = "closed-branch-trash"
 )
 
 // InitProjectDefault initializes project with default values as necessary
 func InitProjectDefaultValues(project *Project) {
 	if project.BranchPrefix == "" {
-		project.BranchPrefix = "lure-"
+		project.BranchPrefix = defaultBranchPrefix
+	}
+	if project.TrashBranch == "" {
+		project.TrashBranch = defaultTrashBranch
 	}
 }

@@ -48,7 +48,7 @@ func cloneRepo(hgAuth Authentication, project Project) (Repo, error) {
 
 	switch project.Vcs {
 	case Hg:
-		repo, err = HgClone(hgAuth, projectRemote, repoPath, project.TrashBranch)
+		repo, err = HgClone(hgAuth, projectRemote, repoPath, project.DefaultBranch, project.TrashBranch)
 	case Git:
 		repo, err = GitClone(hgAuth, projectRemote, repoPath)
 	default:
@@ -93,9 +93,9 @@ func checkForUpdatesJob(auth Authentication, project Project) error {
 		updateModule(auth, moduleToUpdate, project, repo, pullRequests)
 	}
 
-	log.Printf("Info: Check for updates done.")
+	closeOldBranchesWithoutOpenPR(auth, project, repo)
 
-	cleanupUpdateBranches(auth, project, repo)
+	log.Printf("Info: Check for updates done.")
 
 	return nil
 }
@@ -187,58 +187,40 @@ func Execute(pwd string, command string, params ...string) (string, error) {
 	return out, nil
 }
 
-func cleanupUpdateBranches(auth Authentication, project Project, repo Repo) error {
-
-	if project.Vcs != Hg {
-		return nil
-	}
-
-	trashBranch := project.TrashBranch
-	if trashBranch == "" {
-		log.Printf("Info: Project has no trash branch defined. Skipping cleanup.")
-		return nil
-	}
-
+func closeOldBranchesWithoutOpenPR(auth Authentication, project Project, repo Repo) error {
 	log.Printf("Info: Cleaning up lure branches with no associated PRs.")
 
-	out, err := repo.Cmd("branches", "--active", "--template", "{branches}\n")
+	branchPrefix := project.BranchPrefix
+	branches, err := repo.GetActiveBranches()
 	if err != nil {
 		return err
 	}
-
-	branches := strings.Split(out, "\n")
-	branchPrefix := project.BranchPrefix
-
 	existingPRs := getPullRequests(auth, project.Owner, project.Name, false)
 
 	for _, branch := range branches {
 		if strings.HasPrefix(branch, branchPrefix) {
 			if isBranchDead(repo, branch, existingPRs) {
-				repo.CloseBranch(branch)
+				if os.Getenv("DRY_RUN") == "1" {
+					log.Printf("Running in DryRun mode. Branch '%s' would of been closed.", branch)
+				} else {
+					if err := repo.CloseBranch(branch); err != nil {
+						println(err)
+						return err
+					}
+				}
 			}
 		}
 	}
-
-	if os.Getenv("DRY_RUN") == "1" {
-		log.Println("Running in DryRun mode, not doing the pull request nor pushing the changes")
-	} else {
-		if _, err := repo.Push(); err != nil {
-			return err
-		}
-	}
-
 	log.Printf("Info: Lure branches clean up done.")
 
 	return nil
 }
 
 func isBranchDead(repo Repo, branch string, existingPRs []PullRequest) bool {
-
 	for _, pr := range existingPRs {
-		if pr.State == "DECLINED" && branch == pr.Source.Branch.Name {
-			return true
+		if pr.State == "OPEN" && branch == pr.Source.Branch.Name {
+			return false
 		}
 	}
-
-	return false
+	return true
 }

@@ -68,7 +68,6 @@ func CheckForUpdatesJobCommand(auth Authentication, project Project, args map[st
 }
 
 func checkForUpdatesJob(auth Authentication, project Project) error {
-
 	repo, err := cloneRepo(auth, project)
 	if err != nil {
 		return err
@@ -93,7 +92,7 @@ func checkForUpdatesJob(auth Authentication, project Project) error {
 		updateModule(auth, moduleToUpdate, project, repo, pullRequests)
 	}
 
-	closeOldBranchesWithoutOpenPR(auth, project, repo)
+  closeOldBranchesWithoutOpenPR(auth, project, repo)
 
 	log.Printf("Info: Check for updates done.")
 
@@ -101,19 +100,43 @@ func checkForUpdatesJob(auth Authentication, project Project) error {
 }
 
 func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Project, repo Repo, existingPRs []PullRequest) {
-	var title string
 	var dependencyName string
 	if moduleToUpdate.Name != "" {
 		dependencyName = moduleToUpdate.Name
 	} else {
 		dependencyName = moduleToUpdate.Module
 	}
-	title = fmt.Sprintf("Update %s dependency %s to version %s", moduleToUpdate.Type, dependencyName, moduleToUpdate.Latest)
+
+	title := fmt.Sprintf("Update %s dependency %s to version %s", moduleToUpdate.Type, dependencyName, moduleToUpdate.Latest)
+
+	branchPrefix := project.BranchPrefix
+	if branchPrefix == "" {
+		branchPrefix = "lure-"
+	}
+	dependencyBranchPrefix := HgSanitizeBranchName(branchPrefix + dependencyName)
+	dependencyBranchVersionPrefix := dependencyBranchPrefix + "-" + HgSanitizeBranchName(moduleToUpdate.Latest)
+	branchGUID, _ := guid.V4()
+	var branch = dependencyBranchVersionPrefix + "-" + branchGUID.String()
+
+	var prAlreadyExists = false
 	for _, pr := range existingPRs {
-		if pr.Title == title {
-			log.Printf("There already is a PR for: %s", title)
-			return
+		if strings.HasPrefix(pr.Source.Branch.Name, dependencyBranchVersionPrefix) {
+			log.Printf("There already is a PR for: '%s'. The branch name is: %s.", title, pr.Source.Branch.Name)
+			prAlreadyExists = true
+			continue
 		}
+
+		if pr.State == "OPEN" && strings.HasPrefix(pr.Source.Branch.Name, dependencyBranchPrefix) {
+			if os.Getenv("DRY_RUN") == "1" {
+				log.Printf("Running in DryRun mode. PR '%s' made for older version would be declined.", pr.Title)
+			} else {
+				log.Printf("Declining PR '%s' made for older version.", pr.Title)
+				declinePullRequest(auth, project.Owner, project.Name, pr.ID)
+			}
+		}
+	}
+	if prAlreadyExists {
+		return
 	}
 
 	log.Printf("Info: switching %s to default branch: %s", repo.LocalPath(), project.DefaultBranch)
@@ -121,9 +144,6 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 		log.Fatalf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err)
 	}
 
-	branchGUID, _ := guid.V4()
-	branchPrefix := project.BranchPrefix
-	var branch = HgSanitizeBranchName(branchPrefix + dependencyName + "-" + moduleToUpdate.Latest + "-" + branchGUID.String())
 	log.Printf("Creating branch %s\n", branch)
 	if _, err := repo.Branch(branch); err != nil {
 		log.Printf("Error: \"Could not create branch\" %s", err)

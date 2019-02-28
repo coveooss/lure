@@ -92,7 +92,7 @@ func checkForUpdatesJob(auth Authentication, project Project) error {
 		updateModule(auth, moduleToUpdate, project, repo, pullRequests)
 	}
 
-  closeOldBranchesWithoutOpenPR(auth, project, repo)
+	closeOldBranchesWithoutOpenPR(auth, project, repo)
 
 	log.Printf("Info: Check for updates done.")
 

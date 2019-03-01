@@ -28,18 +28,16 @@ func HgClone(auth Authentication, source string, to string, defaultBranch string
 
 	args := []string{"clone", source, to}
 
-	if os.Getenv("LURE_LOCAL_PROJECT_PATH") == "" {
-		switch auth := auth.(type) {
-		case TokenAuth:
-			source = strings.Replace(source, "://", fmt.Sprintf("://x-token-auth:%s@", auth.Token), 1)
-			args = []string{"clone", source, to}
-		case UserPassAuth:
-			args = append([]string{
-				"--config", "auth.repo.prefix=*",
-				"--config", "auth.repo.username=" + auth.Username,
-				"--config", "auth.repo.password=" + auth.Password,
-			}, args...)
-		}
+	switch auth := auth.(type) {
+	case TokenAuth:
+		source = strings.Replace(source, "://", fmt.Sprintf("://x-token-auth:%s@", auth.Token), 1)
+		args = []string{"clone", source, to}
+	case UserPassAuth:
+		args = append([]string{
+			"--config", "auth.repo.prefix=*",
+			"--config", "auth.repo.username=" + auth.Username,
+			"--config", "auth.repo.password=" + auth.Password,
+		}, args...)
 	}
 
 	if _, err := Execute("", "hg", args...); err != nil {

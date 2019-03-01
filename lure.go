@@ -82,6 +82,7 @@ func runMain(config *lure.LureConfig, auth lure.Authentication) {
 			} else {
 				if err := commandFunc(auth, project, command.Args); err != nil {
 					log.Println(fmt.Sprintf("\tCommand failed: %s", err))
+					os.Exit(1)
 				}
 			}
 		}

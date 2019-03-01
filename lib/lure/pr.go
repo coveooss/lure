@@ -65,10 +65,10 @@ func createApiRequest(auth Authentication, method string, path string, body io.R
 	return request, err
 }
 
-func getPullRequests(auth Authentication, username string, repoSlug string) []PullRequest {
+func getPullRequests(auth Authentication, username string, repoSlug string, ignoreDeclinedPRs bool) []PullRequest {
 
 	acceptedStates := "state=OPEN"
-	if os.Getenv("IGNORE_DECLINED_PR") != "1" {
+	if !ignoreDeclinedPRs {
 		acceptedStates += "&state=DECLINED"
 	}
 
@@ -99,8 +99,6 @@ func getPullRequests(auth Authentication, username string, repoSlug string) []Pu
 	if e != nil {
 		log.Println("error: " + e.Error())
 	}
-
-	list.PullRequest = append(list.PullRequest, tmpList.PullRequest...)
 
 	return list.PullRequest
 }

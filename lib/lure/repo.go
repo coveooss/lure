@@ -2,7 +2,6 @@ package lure
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -49,12 +48,12 @@ func cloneRepo(hgAuth Authentication, project Project) (Repo, error) {
 
 	switch project.Vcs {
 	case Hg:
-		repo, err = HgClone(hgAuth, projectRemote, repoPath)
+		repo, err = HgClone(hgAuth, projectRemote, repoPath, project.DefaultBranch, project.TrashBranch)
 	case Git:
 		repo, err = GitClone(hgAuth, projectRemote, repoPath)
 	default:
 		repo = nil
-		err = errors.New(fmt.Sprintf("Unknown VCS '%s' - must be one of %s, %s", project.Vcs, Git, Hg))
+		err = fmt.Errorf("Unknown VCS '%s' - must be one of %s, %s", project.Vcs, Git, Hg)
 	}
 	if err != nil {
 		log.Printf("Error: \"Could not clone\" %s", err)
@@ -76,7 +75,7 @@ func checkForUpdatesJob(auth Authentication, project Project) error {
 
 	log.Printf("Info: switching %s to default branch: %s", repo.RemotePath(), project.DefaultBranch)
 	if _, err := repo.Update(project.DefaultBranch); err != nil {
-		return errors.New(fmt.Sprintf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err))
+		return fmt.Errorf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err)
 	}
 
 	modulesToUpdate := make([]moduleVersion, 0, 0)
@@ -85,11 +84,15 @@ func checkForUpdatesJob(auth Authentication, project Project) error {
 	err, modulesToAdd := mvnOutdated(repo.LocalPath() + "/" + project.BasePath)
 	modulesToUpdate = appendIfMissing(modulesToUpdate, modulesToAdd)
 	log.Printf("Modules to update : %q", modulesToUpdate)
-	pullRequests := getPullRequests(auth, project.Owner, project.Name)
+
+	ignoreDeclinedPRs := os.Getenv("IGNORE_DECLINED_PR") == "1"
+	pullRequests := getPullRequests(auth, project.Owner, project.Name, ignoreDeclinedPRs)
 
 	for _, moduleToUpdate := range modulesToUpdate {
 		updateModule(auth, moduleToUpdate, project, repo, pullRequests)
 	}
+
+	closeOldBranchesWithoutOpenPR(auth, project, repo)
 
 	log.Printf("Info: Check for updates done.")
 
@@ -117,7 +120,7 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 
 	var prAlreadyExists = false
 	for _, pr := range existingPRs {
-		if strings.HasPrefix(pr.Source.Branch.Name, dependencyBranchVersionPrefix) {
+		if !prAlreadyExists && strings.HasPrefix(pr.Source.Branch.Name, dependencyBranchVersionPrefix) {
 			log.Printf("There already is a PR for: '%s'. The branch name is: %s.", title, pr.Source.Branch.Name)
 			prAlreadyExists = true
 			continue
@@ -202,4 +205,42 @@ func Execute(pwd string, command string, params ...string) (string, error) {
 	log.Printf("\t%s\n", out)
 
 	return out, nil
+}
+
+func closeOldBranchesWithoutOpenPR(auth Authentication, project Project, repo Repo) error {
+	log.Printf("Info: Cleaning up lure branches with no associated PRs.")
+
+	branchPrefix := project.BranchPrefix
+	branches, err := repo.GetActiveBranches()
+	if err != nil {
+		return err
+	}
+	existingPRs := getPullRequests(auth, project.Owner, project.Name, false)
+
+	for _, branch := range branches {
+		if strings.HasPrefix(branch, branchPrefix) {
+			if isBranchDead(repo, branch, existingPRs) {
+				if os.Getenv("DRY_RUN") == "1" {
+					log.Printf("Running in DryRun mode. Branch '%s' would of been closed.", branch)
+				} else {
+					if err := repo.CloseBranch(branch); err != nil {
+						println(err)
+						return err
+					}
+				}
+			}
+		}
+	}
+	log.Printf("Info: Lure branches clean up done.")
+
+	return nil
+}
+
+func isBranchDead(repo Repo, branch string, existingPRs []PullRequest) bool {
+	for _, pr := range existingPRs {
+		if pr.State == "OPEN" && branch == pr.Source.Branch.Name {
+			return false
+		}
+	}
+	return true
 }

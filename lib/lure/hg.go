@@ -3,14 +3,17 @@ package lure
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"regexp"
 	"strings"
 )
 
 type HgRepo struct {
-	localPath  string
-	remotePath string
+	localPath     string
+	remotePath    string
+	trashBranch   string
+	defaultBranch string
 }
 
 func HgSanitizeBranchName(name string) string {
@@ -19,7 +22,8 @@ func HgSanitizeBranchName(name string) string {
 	return safe
 }
 
-func HgClone(auth Authentication, source string, to string) (HgRepo, error) {
+// HgClone clones repository locally
+func HgClone(auth Authentication, source string, to string, defaultBranch string, trashBranch string) (HgRepo, error) {
 	var repo HgRepo
 
 	args := []string{"clone", source, to}
@@ -41,8 +45,10 @@ func HgClone(auth Authentication, source string, to string) (HgRepo, error) {
 	}
 
 	repo = HgRepo{
-		localPath:  to,
-		remotePath: source,
+		localPath:     to,
+		remotePath:    source,
+		defaultBranch: defaultBranch,
+		trashBranch:   trashBranch,
 	}
 
 	switch auth := auth.(type) {
@@ -115,4 +121,69 @@ func (hgRepo HgRepo) LogCommitsBetween(baseRev string, secondRev string) ([]stri
 
 	lines := strings.Split(out, "\n")
 	return append(lines[:0], lines[:len(lines)-1]...), nil
+}
+
+// GetActiveBranches returns all currently active branches
+func (hgRepo HgRepo) GetActiveBranches() ([]string, error) {
+	out, err := hgRepo.Cmd("branches", "--active", "--template", "{branch}\n")
+	if err != nil {
+		return nil, err
+	}
+
+	return strings.Split(out, "\n"), nil
+}
+
+// CloseBranch closes the branch then it merges it to a trash branch so no heads are left
+func (hgRepo HgRepo) CloseBranch(branch string) error {
+	log.Printf("Closing branch %s.", branch)
+
+	if _, err := hgRepo.Cmd("update", "-C", branch); err != nil {
+		log.Printf("Error: \"Could not switch to branch %s\" %s", branch, err)
+		return err
+	}
+
+	if _, err := hgRepo.Cmd("commit", "-m", "Close branch "+branch, "--close-branch"); err != nil {
+		log.Printf("Error: \"Could not commit\" %s", err)
+		return err
+	}
+
+	if _, err := hgRepo.Update(hgRepo.trashBranch); err != nil {
+		log.Printf("Error: \"Could not switch to branch %s, trying to create it.\" %s", hgRepo.trashBranch, err)
+		if _, err := hgRepo.Update(hgRepo.defaultBranch); err != nil {
+			log.Printf("Error: \"Could not switch to branch %s\" %s", hgRepo.defaultBranch, err)
+			return err
+		}
+		if _, err := hgRepo.Branch(hgRepo.trashBranch); err != nil {
+			log.Printf("Error: \"Could not create branch %s\" %s", hgRepo.trashBranch, err)
+			return err
+		}
+	}
+
+	if err := hgRepo.fakeMerge(branch, hgRepo.trashBranch); err != nil {
+		log.Printf("Error: \"Could not fake merge branch %s to branch %s\" %s", branch, hgRepo.trashBranch, err)
+		return err
+	}
+
+	if _, err := hgRepo.Push(); err != nil {
+		log.Printf("Error: \"Could not push closed branch %s\" %s", branch, err)
+		return err
+	}
+
+	return nil
+}
+
+func (hgRepo HgRepo) fakeMerge(branch string, toBranch string) error {
+
+	hgRepo.Cmd("-y", "merge", "--tool=internal:fail", branch) // Always produces an err
+	if _, err := hgRepo.Cmd("revert", "--all", "--rev", "."); err != nil {
+		return err
+	}
+	if _, err := hgRepo.Cmd("resolve", "-a", "-m"); err != nil {
+		return err
+	}
+	if _, err := hgRepo.Commit(fmt.Sprintf("Fake merge to close %s into %s", branch, toBranch)); err != nil {
+		return err
+	}
+
+	return nil
 }

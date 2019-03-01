@@ -25,7 +25,7 @@ const (
 	defaultTrashBranch  string = "closed-branch-trash"
 )
 
-// InitProjectDefault initializes project with default values as necessary
+// InitProjectDefaultValues initializes project with default values as necessary
 func InitProjectDefaultValues(project *Project) {
 	if project.BranchPrefix == "" {
 		project.BranchPrefix = defaultBranchPrefix

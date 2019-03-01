@@ -22,6 +22,7 @@ func HgSanitizeBranchName(name string) string {
 	return safe
 }
 
+// HgClone clones repository locally
 func HgClone(auth Authentication, source string, to string, defaultBranch string, trashBranch string) (HgRepo, error) {
 	var repo HgRepo
 
@@ -124,6 +125,7 @@ func (hgRepo HgRepo) LogCommitsBetween(baseRev string, secondRev string) ([]stri
 	return append(lines[:0], lines[:len(lines)-1]...), nil
 }
 
+// GetActiveBranches returns all currently active branches
 func (hgRepo HgRepo) GetActiveBranches() ([]string, error) {
 	out, err := hgRepo.Cmd("branches", "--active", "--template", "{branches}\n")
 	if err != nil {
@@ -133,6 +135,7 @@ func (hgRepo HgRepo) GetActiveBranches() ([]string, error) {
 	return strings.Split(out, "\n"), nil
 }
 
+// CloseBranch closes the branch then it merges it to a trash branch so no heads are left
 func (hgRepo HgRepo) CloseBranch(branch string) error {
 	log.Printf("Closing branch %s.", branch)
 

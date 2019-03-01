@@ -86,13 +86,19 @@ func checkForUpdatesJob(auth Authentication, project Project) error {
 	log.Printf("Modules to update : %q", modulesToUpdate)
 
 	ignoreDeclinedPRs := os.Getenv("IGNORE_DECLINED_PR") == "1"
-	pullRequests := getPullRequests(auth, project.Owner, project.Name, ignoreDeclinedPRs)
+	pullRequests, err := getPullRequests(auth, project.Owner, project.Name, ignoreDeclinedPRs)
+	if err != nil {
+		return err
+	}
 
 	for _, moduleToUpdate := range modulesToUpdate {
 		updateModule(auth, moduleToUpdate, project, repo, pullRequests)
 	}
 
-	closeOldBranchesWithoutOpenPR(auth, project, repo)
+	err = closeOldBranchesWithoutOpenPR(auth, project, repo)
+	if err != nil {
+		return err
+	}
 
 	log.Printf("Info: Check for updates done.")
 
@@ -215,7 +221,10 @@ func closeOldBranchesWithoutOpenPR(auth Authentication, project Project, repo Re
 	if err != nil {
 		return err
 	}
-	existingPRs := getPullRequests(auth, project.Owner, project.Name, false)
+	existingPRs, err := getPullRequests(auth, project.Owner, project.Name, false)
+	if err != nil {
+		return err
+	}
 
 	for _, branch := range branches {
 		if strings.HasPrefix(branch, branchPrefix) {

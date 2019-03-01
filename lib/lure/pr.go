@@ -3,6 +3,7 @@ package lure
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -65,7 +66,7 @@ func createApiRequest(auth Authentication, method string, path string, body io.R
 	return request, err
 }
 
-func getPullRequests(auth Authentication, username string, repoSlug string, ignoreDeclinedPRs bool) []PullRequest {
+func getPullRequests(auth Authentication, username string, repoSlug string, ignoreDeclinedPRs bool) ([]PullRequest, error) {
 
 	acceptedStates := "state=OPEN"
 	if !ignoreDeclinedPRs {
@@ -98,17 +99,19 @@ func getPullRequests(auth Authentication, username string, repoSlug string, igno
 
 	if e != nil {
 		log.Println("error: " + e.Error())
+		return nil, e
 	}
 
-	return list.PullRequest
+	return list.PullRequest, nil
 }
+
 func getPRRequest(prRequest *http.Request) (*PullRequestList, error) {
 	client := getHTTPClient()
 	resp, err := client.Do(prRequest)
 
-	if err != nil {
+	if err != nil || resp.StatusCode < 200 || resp.StatusCode > 299 {
 		log.Println("Error getting PR Requests", client.LogString())
-		return nil, err
+		return nil, errors.New("Something went wrong getting PR, got status code " + resp.Status)
 	}
 
 	var prList PullRequestList

@@ -17,7 +17,12 @@ import (
 )
 
 func mvnOutdated(path string) (error, []moduleVersion) {
-	cmd := exec.Command("mvn", "-B", "versions:display-dependency-updates", "-DprocessDependencyManagement=false", "-Dmaven.version.rules=file:Rules.xml")
+	var cmd *exec.Cmd
+	if fileExists("Rules.xml") {
+		cmd = exec.Command("mvn", "-B", "versions:display-dependency-updates", "-DprocessDependencyManagement=false", "-Dmaven.version.rules=file:Rules.xml")
+	} else {
+		cmd = exec.Command("mvn", "-B", "versions:display-dependency-updates", "-DprocessDependencyManagement=false")
+	}
 	var out bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &out
@@ -235,4 +240,13 @@ func mvnUpdateDep(path string, moduleVersion moduleVersion) (bool, error) { //de
 	}
 
 	return hasUpdate, err
+}
+
+func fileExists(name string) bool {
+	if _, err := os.Stat(name); err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
+	}
+	return true
 }

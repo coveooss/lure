@@ -138,11 +138,17 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 	branchGUID, _ := guid.V4()
 	var branch = dependencyBranchVersionPrefix + "-" + branchGUID.String()
 
-	var prAlreadyExists = false
+	var openPRAlreadyExists = false
+	var declinedPRAlreadyExists = false
 	for _, pr := range existingPRs {
-		if !prAlreadyExists && strings.HasPrefix(pr.Source.Branch.Name, dependencyBranchVersionPrefix) {
-			log.Printf("There already is a PR for: '%s'. The branch name is: %s.", title, pr.Source.Branch.Name)
-			prAlreadyExists = true
+		if !openPRAlreadyExists && strings.HasPrefix(pr.Source.Branch.Name, dependencyBranchVersionPrefix) {
+			if pr.State == "OPEN" {
+				log.Printf("There already is an open PR for: '%s'. The branch name is: %s.", title, pr.Source.Branch.Name)
+				openPRAlreadyExists = true
+			} else {
+				log.Printf("There was a declined PR for: '%s'. The branch name is: %s.", title, pr.Source.Branch.Name)
+				declinedPRAlreadyExists = true
+			}
 			continue
 		}
 
@@ -155,7 +161,7 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 			}
 		}
 	}
-	if prAlreadyExists {
+	if openPRAlreadyExists || declinedPRAlreadyExists {
 		return
 	}
 

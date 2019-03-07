@@ -19,9 +19,9 @@ import (
 func mvnOutdated(path string) (error, []moduleVersion) {
 	var cmd *exec.Cmd
 	if fileExists("Rules.xml") {
-		cmd = exec.Command("mvn", "versions:display-dependency-updates", "-DprocessDependencyManagement=false", "-Dmaven.version.rules=file:Rules.xml")
+		cmd = exec.Command("mvn", "-B", "versions:display-dependency-updates", "-DprocessDependencyManagement=false", "-Dmaven.version.rules=file:Rules.xml")
 	} else {
-		cmd = exec.Command("mvn", "versions:display-dependency-updates", "-DprocessDependencyManagement=false")
+		cmd = exec.Command("mvn", "-B", "versions:display-dependency-updates", "-DprocessDependencyManagement=false")
 	}
 	var out bytes.Buffer
 	var stderr bytes.Buffer
@@ -78,7 +78,7 @@ func mvnOutdated(path string) (error, []moduleVersion) {
 func getModulePropertyMap(path string) map[string]string {
 	var moduleProperties map[string]string = make(map[string]string)
 
-	cmd := exec.Command("mvn", "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
+	cmd := exec.Command("mvn", "-B", "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
 	var out bytes.Buffer
 	var stree bytes.Buffer
 	cmd.Stdout = &out
@@ -157,7 +157,7 @@ func mvnUpdateDep(path string, moduleVersion moduleVersion) (bool, error) { //de
 
 	if moduleVersion.Name != "" {
 		//list all folder with pom.xml
-		cmd := exec.Command("mvn", "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
+		cmd := exec.Command("mvn", "-B", "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
 		var out bytes.Buffer
 		var stderr bytes.Buffer
 		cmd.Stdout = &out
@@ -229,7 +229,7 @@ func mvnUpdateDep(path string, moduleVersion moduleVersion) (bool, error) { //de
 		}
 	} else {
 		var autoUpdateResult string
-		autoUpdateResult, err = Execute(path, "mvn", "org.codehaus.mojo:versions-maven-plugin:2.4:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
+		autoUpdateResult, err = Execute(path, "mvn", "-B", "org.codehaus.mojo:versions-maven-plugin:2.4:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
 		if strings.Contains(autoUpdateResult, fmt.Sprintf("Updated %s:jar:%s to version %s", dependency, moduleVersion.Current, version)) == true {
 			hasUpdate = true
 		}

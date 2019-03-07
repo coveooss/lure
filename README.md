@@ -22,6 +22,9 @@ The file should look like:
             "commands": [
                 {
                     "name": "updateDependencies"
+                    "args": {
+                        "commitMessage": "Update {{.module}} to {{.version}}\nMYJIRA-1234"
+                    }
                 }
             ]
         },

@@ -6,15 +6,15 @@ type Command struct {
 }
 
 type Project struct {
-	Vcs           string          `json:"vcs"`
-	Owner         string          `json:"owner"`
-	Name          string          `json:"name"`
-	DefaultBranch string          `json:"defaultBranch"`
-	BranchPrefix  string          `json:"branchPrefix"`
-	TrashBranch   string          `json:"trashBranch"`
-	BasePath      string          `json:"basePath"`
-	PackagesTypes map[string]bool `json:"packageTypes"`
-	Commands      []Command       `json:"commands"`
+	Vcs                string          `json:"vcs"`
+	Owner              string          `json:"owner"`
+	Name               string          `json:"name"`
+	DefaultBranch      string          `json:"defaultBranch"`
+	BranchPrefix       string          `json:"branchPrefix"`
+	TrashBranch        string          `json:"trashBranch"`
+	BasePath           string          `json:"basePath"`
+	SkipPackageManager map[string]bool `json:"skipPackageManager"`
+	Commands           []Command       `json:"commands"`
 }
 
 type LureConfig struct {

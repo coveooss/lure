@@ -81,7 +81,6 @@ func CheckForUpdatesJobCommand(auth Authentication, project Project, args map[st
 }
 
 func checkForUpdatesJob(auth Authentication, project Project, commitMessage string) error {
-
 	repo, err := cloneRepo(auth, project)
 	if err != nil {
 		return err
@@ -94,17 +93,18 @@ func checkForUpdatesJob(auth Authentication, project Project, commitMessage stri
 
 	modulesToUpdate := make([]moduleVersion, 0, 0)
 
-	if project.PackagesTypes == nil || project.PackagesTypes["npm"] == nil || project.PackagesTypes["npm"] == true {
+	if project.SkipPackageManager == nil || project.SkipPackageManager["npm"] != true {
 		modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repo.LocalPath()+"/"+project.BasePath))
 	}
 
-	if project.PackagesTypes == nil || project.PackagesTypes["mvn"] == nil || project.PackagesTypes["mvn"] == true {
+	if project.SkipPackageManager == nil || project.SkipPackageManager["mvn"] != true {
 		err, modulesToAdd := mvnOutdated(repo.LocalPath() + "/" + project.BasePath)
 		if err != nil {
 			return err
 		}
+		modulesToUpdate = appendIfMissing(modulesToUpdate, modulesToAdd)
 	}
-	modulesToUpdate = appendIfMissing(modulesToUpdate, modulesToAdd)
+
 	log.Printf("Modules to update : %q", modulesToUpdate)
 
 	ignoreDeclinedPRs := os.Getenv("IGNORE_DECLINED_PR") == "1"

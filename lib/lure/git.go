@@ -2,6 +2,7 @@ package lure
 
 import (
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
 )
@@ -83,4 +84,30 @@ func (gitRepo GitRepo) LogCommitsBetween(baseRev string, secondRev string) ([]st
 
 	lines := strings.Split(out, "\n")
 	return append(lines[:0], lines[:len(lines)-1]...), nil
+}
+
+// GetActiveBranches returns all currently active branches without origin/ prefix
+func (gitRepo GitRepo) GetActiveBranches() ([]string, error) {
+	out, err := gitRepo.Cmd("branch", "-r")
+	if err != nil {
+		return nil, err
+	}
+	branches := strings.Split(strings.TrimSpace(out), "\n")
+
+	// removing the remote prefix (origin/ most of the time)
+	for i := range branches {
+		if strings.Contains(branches[i], "origin/HEAD ->") {
+			branches[i] = strings.SplitN(branches[i], "/", 3)[2]
+		} else {
+			branches[i] = strings.SplitN(branches[i], "/", 2)[1]
+		}
+	}
+	return branches, nil
+}
+
+// CloseBranch deletes the branch for the remote repository
+func (gitRepo GitRepo) CloseBranch(branch string) error {
+	log.Printf("Closing branch %s.", branch)
+	_, err := gitRepo.Cmd("push", gitRepo.remotePath, "--delete", branch)
+	return err
 }

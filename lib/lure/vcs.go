@@ -20,6 +20,8 @@ type Repo interface {
 	Branch(branchname string) (string, error)
 	Commit(message string) (string, error)
 	Push() (string, error)
+	GetActiveBranches() ([]string, error)
+	CloseBranch(branch string) error
 
 	LogCommitsBetween(baseRev string, secondRev string) ([]string, error)
 }

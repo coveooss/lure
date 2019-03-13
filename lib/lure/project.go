@@ -11,6 +11,7 @@ type Project struct {
 	Name          string          `json:"name"`
 	DefaultBranch string          `json:"defaultBranch"`
 	BranchPrefix  string          `json:"branchPrefix"`
+	TrashBranch   string          `json:"trashBranch"`
 	BasePath      string          `json:"basePath"`
 	PackagesTypes map[string]bool `json:"packageTypes"`
 	Commands      []Command       `json:"commands"`
@@ -18,4 +19,25 @@ type Project struct {
 
 type LureConfig struct {
 	Projects []Project `json:"projects"`
+}
+
+const (
+	defaultBranchPrefix string = "lure-"
+	defaultTrashBranch  string = "closed-branch-trash"
+)
+
+// InitProjectDefaultValues initializes project with default values as necessary
+func InitProjectDefaultValues(project *Project) {
+	if project.BranchPrefix == "" {
+		project.BranchPrefix = defaultBranchPrefix
+	}
+	if project.TrashBranch == "" {
+		project.TrashBranch = defaultTrashBranch
+	}
+	for _, cmd := range project.Commands {
+		_, ok := cmd.Args["commitMessage"]
+		if !ok {
+			cmd.Args["commitMessage"] = "Update {{.module}} to {{.version}}"
+		}
+	}
 }

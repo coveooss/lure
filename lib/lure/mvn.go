@@ -17,6 +17,12 @@ import (
 )
 
 func mvnOutdated(path string) (error, []moduleVersion) {
+	const pomDefaultFileName = "pom.xml"
+	if !fileExists(path + pomDefaultFileName) {
+		log.Println(pomDefaultFileName + " doesn't exist, skipping mvn update")
+		return nil, make([]moduleVersion, 0, 0)
+	}
+
 	var cmd *exec.Cmd
 	if fileExists("Rules.xml") {
 		cmd = exec.Command("mvn", "-B", "versions:display-dependency-updates", "-DprocessDependencyManagement=false", "-Dmaven.version.rules=file:Rules.xml")

@@ -11,22 +11,24 @@ First create a `lure.config` in the repository you want to keep your dependencie
 
 The file should look like:
 
-```{
-    "projects": [
-        {
+```
+{
+    "projects": [{
             "vcs": "hg",
             "owner": "dreisch",
             "name": "catfeederhg",
             "defaultBranch": "default",
             "branchPrefix": "lure-",
-            "commands": [
-                {
-                    "name": "updateDependencies"
-                    "args": {
-                        "commitMessage": "Update {{.module}} to {{.version}}\nMYJIRA-1234"
-                    }
+            "skipPackageManager": {
+                "mvn": true,
+                "npm": false
+            },
+            "commands": [{
+                "name": "updateDependencies",
+                "args": {
+                    "commitMessage": "Update {{.module}} to {{.version}}\nMYJIRA-1234"
                 }
-            ]
+            }]
         },
         {
             "vcs": "git",
@@ -34,15 +36,13 @@ The file should look like:
             "name": "catfeedergit",
             "defaultBranch": "master",
             "branchPrefix": "lure-",
-            "commands": [
-                {
-                    "name": "synchronizedBranches",
-                    "args": {
-                        "from": "staging",
-                        "to": "develop"
-                    }
+            "commands": [{
+                "name": "synchronizedBranches",
+                "args": {
+                    "from": "staging",
+                    "to": "develop"
                 }
-            ]
+            }]
         }
     ]
 }
@@ -59,7 +59,7 @@ The possible commands are:
 Other:
 - `owner`: https ://bitbucket.org/**owner**/name
 - `name`: https ://bitbucket.org/owner/**name**
-
+- `skipPackageManager` (Optional):  Allows to explicitely skip a package manager update. Allowed keys are: `npm` and `mvn`.
 
 ## Setup your CI
 

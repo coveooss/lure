@@ -69,11 +69,13 @@ eg, in jenkins:
 git config --global user.email "Youmail@example.com"
 git config --global user.name "jenkins"
 
-wget https://github.com/coveo/lure/releases/download/1.1.2/lure-linux-amd64 -O lure
+wget https://github.com/coveo/lure/releases/download/[LURE_VERSION]/lure-linux-amd64 -O lure
 chmod +x lure
 ./lure -auth env -config ${WORKSPACE}/lure.config
 
 ```
+
+For instance, you can replace `[LURE_VERSION]` with `1.4.0`. (See: https://github.com/coveo/lure/releases)
 
 You need bitbucket api-key and api-secret, see, the [bitbucket documentation](https://confluence.atlassian.com/bitbucket/oauth-on-bitbucket-cloud-238027431.html#OAuthonBitbucketCloud-OAuth2.0) for OAuth setup.
 

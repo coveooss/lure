@@ -22,8 +22,9 @@ type LureConfig struct {
 }
 
 const (
-	defaultBranchPrefix string = "lure-"
-	defaultTrashBranch  string = "closed-branch-trash"
+	defaultBranchPrefix  string = "lure-"
+	defaultTrashBranch   string = "closed-branch-trash"
+	defaultCommitMessage string = "Update {{.module}} to {{.version}}"
 )
 
 // InitProjectDefaultValues initializes project with default values as necessary
@@ -34,10 +35,15 @@ func InitProjectDefaultValues(project *Project) {
 	if project.TrashBranch == "" {
 		project.TrashBranch = defaultTrashBranch
 	}
-	for _, cmd := range project.Commands {
+	for i := range project.Commands {
+		cmd := &project.Commands[i]
+
+		if cmd.Args == nil {
+			cmd.Args = map[string]string{}
+		}
 		_, ok := cmd.Args["commitMessage"]
 		if !ok {
-			cmd.Args["commitMessage"] = "Update {{.module}} to {{.version}}"
+			cmd.Args["commitMessage"] = defaultCommitMessage
 		}
 	}
 }

@@ -69,7 +69,7 @@ eg, in jenkins:
 git config --global user.email "Youmail@example.com"
 git config --global user.name "jenkins"
 
-wget https://github.com/coveo/lure/releases/download/1.1.2/lure-linux-amd64 -O lure
+wget https://github.com/coveo/lure/releases/latest/download/lure-linux-amd64 -O lure
 chmod +x lure
 ./lure -auth env -config ${WORKSPACE}/lure.config
 

@@ -27,6 +27,10 @@ type Dest struct {
 	Branch Branch `json:"branch"`
 }
 
+type User struct {
+	Uuid string `json:"uuid"`
+}
+
 type PullRequest struct {
 	ID                int    `json:"id"`
 	Title             string `json:"title"`
@@ -35,6 +39,7 @@ type PullRequest struct {
 	Dest              Dest   `json:"destination"`
 	CloseSourceBranch bool   `json:"close_source_branch"`
 	State             string `json:"state"`
+	Reviewers         []User `json:"reviewers"`
 }
 
 type PullRequestList struct {
@@ -108,6 +113,34 @@ func getPullRequests(auth Authentication, username string, repoSlug string, igno
 	return list.PullRequest, nil
 }
 
+func getDefaultReviewers(auth Authentication, username string, repoSlug string) ([]User, error) {
+
+	bitBucketPath := fmt.Sprintf("/%s/%s/default-reviewers", username, repoSlug)
+
+	request, _ := createApiRequest(auth, "GET", bitBucketPath, nil)
+	request.Header.Add("Content-Type", "application/json")
+
+	client := getHTTPClient()
+	resp, err := client.Do(request)
+
+	if err != nil || resp.StatusCode < 200 || resp.StatusCode > 299 {
+		log.Println("Error getting default reviewers", client.LogString())
+		return nil, errors.New("Something went wrong getting default reviewers, got status code " + resp.Status)
+	}
+
+	type GetDefaultReviewers struct {
+		Values []User `json:"values"`
+	}
+	var jsonresp GetDefaultReviewers
+	json.NewDecoder(resp.Body).Decode(&jsonresp)
+
+	defer resp.Body.Close()
+
+	log.Printf("Getting '%s' default reviewers returned %d: %d.", request.URL, resp.StatusCode, len(jsonresp.Values))
+
+	return jsonresp.Values, nil
+}
+
 func getPRRequest(prRequest *http.Request) (*PullRequestList, error) {
 	client := getHTTPClient()
 	resp, err := client.Do(prRequest)
@@ -126,7 +159,13 @@ func getPRRequest(prRequest *http.Request) (*PullRequestList, error) {
 	return &prList, nil
 }
 
-func createPullRequest(auth Authentication, sourceBranch string, destBranch string, owner string, repo string, title string, description string) error {
+func createPullRequest(auth Authentication, sourceBranch string, destBranch string, owner string, repo string, title string, description string, useDefaultReviewers bool) error {
+	reviewers := []User{}
+	if (useDefaultReviewers) {
+		reviewers, _ = getDefaultReviewers(auth, owner, repo)
+	}
+
+
 	pr := PullRequest{
 		Title:       title,
 		Description: description,
@@ -141,6 +180,7 @@ func createPullRequest(auth Authentication, sourceBranch string, destBranch stri
 			},
 		},
 		CloseSourceBranch: true,
+		Reviewers: reviewers,
 	}
 
 	buf := &bytes.Buffer{}

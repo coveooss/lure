@@ -19,6 +19,7 @@ The file should look like:
             "name": "catfeederhg",
             "defaultBranch": "default",
             "branchPrefix": "lure-",
+            "useDefaultReviewers": false,
             "skipPackageManager": {
                 "mvn": true,
                 "npm": false
@@ -60,6 +61,7 @@ Other:
 - `owner`: https ://bitbucket.org/**owner**/name
 - `name`: https ://bitbucket.org/owner/**name**
 - `skipPackageManager` (Optional):  Allows to explicitely skip a package manager update. Allowed keys are: `npm` and `mvn`.
+- `useDefaultReviewers` (Optional): True by default, allows NOT using the default reviewer list on pull requests.
 
 ## Setup your CI
 

@@ -212,8 +212,9 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 		}
 
 		log.Printf("Creating PR\n")
+
 		description := fmt.Sprintf("%s version %s is now available! Please update.", moduleToUpdate.Module, moduleToUpdate.Latest)
-		createPullRequest(auth, branch, project.DefaultBranch, project.Owner, project.Name, title, description)
+		createPullRequest(auth, branch, project.DefaultBranch, project.Owner, project.Name, title, description, *project.UseDefaultReviewers)
 	}
 }
 

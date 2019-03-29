@@ -6,15 +6,16 @@ type Command struct {
 }
 
 type Project struct {
-	Vcs                string          `json:"vcs"`
-	Owner              string          `json:"owner"`
-	Name               string          `json:"name"`
-	DefaultBranch      string          `json:"defaultBranch"`
-	BranchPrefix       string          `json:"branchPrefix"`
-	TrashBranch        string          `json:"trashBranch"`
-	BasePath           string          `json:"basePath"`
-	SkipPackageManager map[string]bool `json:"skipPackageManager"`
-	Commands           []Command       `json:"commands"`
+	Vcs                 string          `json:"vcs"`
+	Owner               string          `json:"owner"`
+	Name                string          `json:"name"`
+	DefaultBranch       string          `json:"defaultBranch"`
+	BranchPrefix        string          `json:"branchPrefix"`
+	TrashBranch         string          `json:"trashBranch"`
+	BasePath            string          `json:"basePath"`
+	SkipPackageManager  map[string]bool `json:"skipPackageManager"`
+	UseDefaultReviewers *bool	    `json:"useDefaultReviewers"`
+	Commands           []Command        `json:"commands"`
 }
 
 type LureConfig struct {
@@ -22,11 +23,15 @@ type LureConfig struct {
 }
 
 const (
-	defaultBranchPrefix  string = "lure-"
-	defaultTrashBranch   string = "closed-branch-trash"
-	defaultCommitMessage string = "Update {{.module}} to {{.version}}"
+	defaultBranchPrefix  string 	= "lure-"
+	defaultTrashBranch   string 	= "closed-branch-trash"
+	defaultCommitMessage string 	= "Update {{.module}} to {{.version}}"
 )
 
+func newTrue() *bool {
+    b := true
+    return &b
+}
 // InitProjectDefaultValues initializes project with default values as necessary
 func InitProjectDefaultValues(project *Project) {
 	if project.BranchPrefix == "" {
@@ -34,6 +39,9 @@ func InitProjectDefaultValues(project *Project) {
 	}
 	if project.TrashBranch == "" {
 		project.TrashBranch = defaultTrashBranch
+	}
+	if project.UseDefaultReviewers == nil {
+		project.UseDefaultReviewers = newTrue()
 	}
 	for i := range project.Commands {
 		cmd := &project.Commands[i]

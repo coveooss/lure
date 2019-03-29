@@ -68,7 +68,7 @@ func synchronizedBranches(auth Authentication, project Project, fromBranch strin
 			return err
 		}
 
-		if err := createPullRequest(auth, mergeBranch, toBranch, project.Owner, project.Name, fmt.Sprintf("Merge %s into %s", fromBranch, toBranch), ""); err != nil {
+		if err := createPullRequest(auth, mergeBranch, toBranch, project.Owner, project.Name, fmt.Sprintf("Merge %s into %s", fromBranch, toBranch), "", *project.UseDefaultReviewers); err != nil {
 			return err
 		}
 	}

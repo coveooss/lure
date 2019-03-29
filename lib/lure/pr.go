@@ -241,8 +241,9 @@ func declinePullRequest(auth Authentication, username string, repoSlug string, p
 
 func getHTTPClient() *pester.Client {
 	client := pester.New()
-	client.MaxRetries = 5
+	client.MaxRetries = 10
 	client.Backoff = pester.ExponentialBackoff
 	client.RetryOnHTTP429 = true
+	client.KeepLog = true
 	return client
 }

@@ -203,5 +203,6 @@ func getHTTPClient() *pester.Client {
 	client := pester.New()
 	client.MaxRetries = 5
 	client.Backoff = pester.ExponentialBackoff
+	client.RetryOnHTTP429 = true
 	return client
 }

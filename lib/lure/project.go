@@ -1,5 +1,7 @@
 package lure
 
+import "strings"
+
 type Command struct {
 	Name string            `json:"name"`
 	Args map[string]string `json:"args"`
@@ -14,8 +16,8 @@ type Project struct {
 	TrashBranch         string          `json:"trashBranch"`
 	BasePath            string          `json:"basePath"`
 	SkipPackageManager  map[string]bool `json:"skipPackageManager"`
-	UseDefaultReviewers *bool	    `json:"useDefaultReviewers"`
-	Commands           []Command        `json:"commands"`
+	UseDefaultReviewers *bool           `json:"useDefaultReviewers"`
+	Commands            []Command       `json:"commands"`
 }
 
 type LureConfig struct {
@@ -23,17 +25,18 @@ type LureConfig struct {
 }
 
 const (
-	defaultBranchPrefix  string 	= "lure-"
-	defaultTrashBranch   string 	= "closed-branch-trash"
-	defaultCommitMessage string 	= "Update {{.module}} to {{.version}}"
+	defaultBranchPrefix  string = "lure-"
+	defaultTrashBranch   string = "closed-branch-trash"
+	defaultCommitMessage string = "Update {{.module}} to {{.version}}"
 )
 
 func newTrue() *bool {
-    b := true
-    return &b
+	b := true
+	return &b
 }
+
 // InitProjectDefaultValues initializes project with default values as necessary
-func InitProjectDefaultValues(project *Project) {
+func InitProjectDefaultValues(project *Project, repo Repo) {
 	if project.BranchPrefix == "" {
 		project.BranchPrefix = defaultBranchPrefix
 	}
@@ -54,4 +57,9 @@ func InitProjectDefaultValues(project *Project) {
 			cmd.Args["commitMessage"] = defaultCommitMessage
 		}
 	}
+	var completeBasePath strings.Builder
+	completeBasePath.WriteString(repo.LocalPath())
+	completeBasePath.WriteString("/")
+	completeBasePath.WriteString(project.BasePath)
+	project.BasePath = completeBasePath.String()
 }

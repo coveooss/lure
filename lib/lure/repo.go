@@ -94,11 +94,11 @@ func checkForUpdatesJob(auth Authentication, project Project, commitMessage stri
 	modulesToUpdate := make([]moduleVersion, 0, 0)
 
 	if project.SkipPackageManager == nil || project.SkipPackageManager["npm"] != true {
-		modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repo.LocalPath()+"/"+project.BasePath))
+		modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(project.BasePath)
 	}
 
 	if project.SkipPackageManager == nil || project.SkipPackageManager["mvn"] != true {
-		err, modulesToAdd := mvnOutdated(repo.LocalPath() + "/" + project.BasePath)
+		err, modulesToAdd := mvnOutdated(project.BasePath)
 		if err != nil {
 			return err
 		}
@@ -188,9 +188,9 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 
 	switch moduleToUpdate.Type {
 	case "maven":
-		hasChanges, _ = mvnUpdateDep(repo.LocalPath(), moduleToUpdate)
+		hasChanges, _ = mvnUpdateDep(project.BasePath, moduleToUpdate)
 	case "npm":
-		hasChanges, _ = readPackageJSON(repo.LocalPath(), moduleToUpdate.Module, moduleToUpdate.Latest)
+		hasChanges, _ = readPackageJSON(project.BasePath, moduleToUpdate.Module, moduleToUpdate.Latest)
 	}
 
 	if hasChanges == false {

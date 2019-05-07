@@ -12,6 +12,7 @@ type UserPassAuth struct {
 }
 
 type Repo interface {
+	WorkingPath() string
 	LocalPath() string
 	RemotePath() string
 

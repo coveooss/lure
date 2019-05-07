@@ -8,8 +8,9 @@ import (
 )
 
 type GitRepo struct {
-	localPath  string
-	remotePath string
+	workingPath string
+	localPath   string
+	remotePath  string
 
 	userPass UserPassAuth
 }
@@ -20,7 +21,7 @@ func GitSanitizeBranchName(name string) string {
 	return safe
 }
 
-func GitClone(auth Authentication, source string, to string) (GitRepo, error) {
+func GitClone(auth Authentication, source string, to string, basePath string) (GitRepo, error) {
 	var repo GitRepo
 
 	switch auth := auth.(type) {
@@ -36,12 +37,22 @@ func GitClone(auth Authentication, source string, to string) (GitRepo, error) {
 		return repo, err
 	}
 
+	var workingPath strings.Builder
+	workingPath.WriteString(repo.LocalPath())
+	workingPath.WriteString("/")
+	workingPath.WriteString(basePath)
+
 	repo = GitRepo{
-		localPath:  to,
-		remotePath: source,
+		workingPath: workingPath.String(),
+		localPath:   to,
+		remotePath:  source,
 	}
 
 	return repo, nil
+}
+
+func (gitRepo GitRepo) WorkingPath() string {
+	return gitRepo.workingPath
 }
 
 func (gitRepo GitRepo) LocalPath() string {

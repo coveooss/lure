@@ -1,7 +1,5 @@
 package lure
 
-import "strings"
-
 type Command struct {
 	Name string            `json:"name"`
 	Args map[string]string `json:"args"`
@@ -36,7 +34,7 @@ func newTrue() *bool {
 }
 
 // InitProjectDefaultValues initializes project with default values as necessary
-func InitProjectDefaultValues(project *Project, repo Repo) {
+func InitProjectDefaultValues(project *Project) {
 	if project.BranchPrefix == "" {
 		project.BranchPrefix = defaultBranchPrefix
 	}
@@ -57,9 +55,4 @@ func InitProjectDefaultValues(project *Project, repo Repo) {
 			cmd.Args["commitMessage"] = defaultCommitMessage
 		}
 	}
-	var completeBasePath strings.Builder
-	completeBasePath.WriteString(repo.LocalPath())
-	completeBasePath.WriteString("/")
-	completeBasePath.WriteString(project.BasePath)
-	project.BasePath = completeBasePath.String()
 }

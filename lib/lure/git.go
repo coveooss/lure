@@ -38,7 +38,7 @@ func GitClone(auth Authentication, source string, to string, basePath string) (G
 	}
 
 	var workingPath strings.Builder
-	workingPath.WriteString(repo.LocalPath())
+	workingPath.WriteString(to)
 	workingPath.WriteString("/")
 	workingPath.WriteString(basePath)
 

@@ -46,7 +46,7 @@ func HgClone(auth Authentication, source string, to string, defaultBranch string
 	}
 
 	var workingPath strings.Builder
-	workingPath.WriteString(repo.LocalPath())
+	workingPath.WriteString(to)
 	workingPath.WriteString("/")
 	workingPath.WriteString(basePath)
 

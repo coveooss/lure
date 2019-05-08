@@ -200,7 +200,7 @@ func mvnUpdateDep(path string, moduleVersion moduleVersion) (bool, error) { //de
 
 			for _, property := range mvnProject.Properties.PropertyList {
 				if property.XMLName.Local == moduleVersion.Name {
-					log.Println("%s : %s : %s", folder, property.XMLName.Local, property.Value)
+					log.Printf("%s : %s : %s", folder, property.XMLName.Local, property.Value)
 					var propertyToReplace = strings.TrimRight(strings.TrimLeft(moduleVersion.Name, "${"), "}")
 
 					for _, folder2 := range folders {

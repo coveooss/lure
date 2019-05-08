@@ -10,6 +10,7 @@ import (
 )
 
 type HgRepo struct {
+	workingPath   string
 	localPath     string
 	remotePath    string
 	trashBranch   string
@@ -23,7 +24,7 @@ func HgSanitizeBranchName(name string) string {
 }
 
 // HgClone clones repository locally
-func HgClone(auth Authentication, source string, to string, defaultBranch string, trashBranch string) (HgRepo, error) {
+func HgClone(auth Authentication, source string, to string, defaultBranch string, trashBranch string, basePath string) (HgRepo, error) {
 	var repo HgRepo
 
 	args := []string{"clone", source, to}
@@ -44,7 +45,13 @@ func HgClone(auth Authentication, source string, to string, defaultBranch string
 		return repo, err
 	}
 
+	var workingPath strings.Builder
+	workingPath.WriteString(to)
+	workingPath.WriteString("/")
+	workingPath.WriteString(basePath)
+
 	repo = HgRepo{
+		workingPath:   workingPath.String(),
 		localPath:     to,
 		remotePath:    source,
 		defaultBranch: defaultBranch,
@@ -57,6 +64,10 @@ func HgClone(auth Authentication, source string, to string, defaultBranch string
 	}
 
 	return repo, nil
+}
+
+func (hgRepo HgRepo) WorkingPath() string {
+	return hgRepo.workingPath
 }
 
 func (hgRepo HgRepo) LocalPath() string {

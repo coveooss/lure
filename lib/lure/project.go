@@ -14,8 +14,8 @@ type Project struct {
 	TrashBranch         string          `json:"trashBranch"`
 	BasePath            string          `json:"basePath"`
 	SkipPackageManager  map[string]bool `json:"skipPackageManager"`
-	UseDefaultReviewers *bool	    `json:"useDefaultReviewers"`
-	Commands           []Command        `json:"commands"`
+	UseDefaultReviewers *bool           `json:"useDefaultReviewers"`
+	Commands            []Command       `json:"commands"`
 }
 
 type LureConfig struct {
@@ -23,15 +23,16 @@ type LureConfig struct {
 }
 
 const (
-	defaultBranchPrefix  string 	= "lure-"
-	defaultTrashBranch   string 	= "closed-branch-trash"
-	defaultCommitMessage string 	= "Update {{.module}} to {{.version}}"
+	defaultBranchPrefix  string = "lure-"
+	defaultTrashBranch   string = "closed-branch-trash"
+	defaultCommitMessage string = "Update {{.module}} to {{.version}}"
 )
 
 func newTrue() *bool {
-    b := true
-    return &b
+	b := true
+	return &b
 }
+
 // InitProjectDefaultValues initializes project with default values as necessary
 func InitProjectDefaultValues(project *Project) {
 	if project.BranchPrefix == "" {

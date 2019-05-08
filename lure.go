@@ -40,8 +40,6 @@ func main() {
 		log.Println("Running in DryRun mode, not doing the pull request nor pushing the changes")
 	}
 
-	log.Printf("Config: %s\n", config)
-
 	switch *mode {
 	case "oauth":
 		log.Println("Using OAuth Authentication")
@@ -191,5 +189,7 @@ func loadConfig(filePath string) (*lure.LureConfig, error) {
 	if err := json.NewDecoder(file).Decode(lureConfig); err != nil {
 		return nil, err
 	}
+	configJson, _ := json.Marshal(lureConfig)
+	log.Println("Config:", string(configJson))
 	return lureConfig, nil
 }

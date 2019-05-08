@@ -61,9 +61,9 @@ func cloneRepo(hgAuth Authentication, project Project) (Repo, error) {
 
 	switch project.Vcs {
 	case Hg:
-		repo, err = HgClone(hgAuth, projectRemote, repoPath, project.DefaultBranch, project.TrashBranch)
+		repo, err = HgClone(hgAuth, projectRemote, repoPath, project.DefaultBranch, project.TrashBranch, project.BasePath)
 	case Git:
-		repo, err = GitClone(hgAuth, projectRemote, repoPath)
+		repo, err = GitClone(hgAuth, projectRemote, repoPath, project.BasePath)
 	default:
 		repo = nil
 		err = fmt.Errorf("Unknown VCS '%s' - must be one of %s, %s", project.Vcs, Git, Hg)
@@ -94,11 +94,11 @@ func checkForUpdatesJob(auth Authentication, project Project, commitMessage stri
 	modulesToUpdate := make([]moduleVersion, 0, 0)
 
 	if project.SkipPackageManager == nil || project.SkipPackageManager["npm"] != true {
-		modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repo.LocalPath()+"/"+project.BasePath))
+		modulesToUpdate = appendIfMissing(modulesToUpdate, npmOutdated(repo.WorkingPath()))
 	}
 
 	if project.SkipPackageManager == nil || project.SkipPackageManager["mvn"] != true {
-		err, modulesToAdd := mvnOutdated(repo.LocalPath() + "/" + project.BasePath)
+		err, modulesToAdd := mvnOutdated(repo.WorkingPath())
 		if err != nil {
 			return err
 		}
@@ -188,9 +188,9 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 
 	switch moduleToUpdate.Type {
 	case "maven":
-		hasChanges, _ = mvnUpdateDep(repo.LocalPath(), moduleToUpdate)
+		hasChanges, _ = mvnUpdateDep(repo.WorkingPath(), moduleToUpdate)
 	case "npm":
-		hasChanges, _ = readPackageJSON(repo.LocalPath(), moduleToUpdate.Module, moduleToUpdate.Latest)
+		hasChanges, _ = readPackageJSON(repo.WorkingPath(), moduleToUpdate.Module, moduleToUpdate.Latest)
 	}
 
 	if hasChanges == false {

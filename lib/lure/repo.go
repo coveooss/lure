@@ -8,22 +8,8 @@ import (
 	"os/exec"
 	"reflect"
 	"strings"
-	"text/template"
-
 	"github.com/vsekhar/govtil/guid"
 )
-
-// Tprintf passed template string is formatted using its operands and returns the resulting string.
-// Spaces are added between operands when neither is a string.
-// https://play.golang.org/p/COHKlB2RML
-func Tprintf(tmpl string, data map[string]interface{}) string {
-	t := template.Must(template.New(tmpl).Parse(tmpl))
-	buf := &bytes.Buffer{}
-	if err := t.Execute(buf, data); err != nil {
-		return ""
-	}
-	return buf.String()
-}
 
 // This part interesting
 // https://github.com/golang/go/blob/1441f76938bf61a2c8c2ed1a65082ddde0319633/src/cmd/go/vcs.go

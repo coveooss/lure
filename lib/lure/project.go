@@ -23,9 +23,10 @@ type LureConfig struct {
 }
 
 const (
-	defaultBranchPrefix  string = "lure-"
-	defaultTrashBranch   string = "closed-branch-trash"
-	defaultCommitMessage string = "Update {{.module}} to {{.version}}"
+	defaultBranchPrefix           string = "lure-"
+	defaultTrashBranch            string = "closed-branch-trash"
+	defaultCommitMessage          string = "Update {{.module}} to {{.version}}"
+	defaultPullRequestDescription string = "{{.module}} version {{.version}} is now available! Please update."
 )
 
 func newTrue() *bool {
@@ -50,9 +51,15 @@ func InitProjectDefaultValues(project *Project) {
 		if cmd.Args == nil {
 			cmd.Args = map[string]string{}
 		}
-		_, ok := cmd.Args["commitMessage"]
-		if !ok {
+
+		_, haveCommitMessage := cmd.Args["commitMessage"]
+		if !haveCommitMessage {
 			cmd.Args["commitMessage"] = defaultCommitMessage
+		}
+
+		_, havePullRequestDescription := cmd.Args["pullRequestDescription"]
+		if !havePullRequestDescription {
+			cmd.Args["pullRequestDescription"] = defaultPullRequestDescription
 		}
 	}
 }

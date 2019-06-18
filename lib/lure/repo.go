@@ -213,7 +213,7 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 
 		log.Printf("Creating PR\n")
 
-		description := fmt.Sprintf("%s version %s is now available! Please update.", moduleToUpdate.Module, moduleToUpdate.Latest)
+		description := Tprintf(commitMessage, map[string]interface{}{"module": moduleToUpdate.Module, "version": moduleToUpdate.Latest})
 		createPullRequest(auth, branch, project.DefaultBranch, project.Owner, project.Name, title, description, *project.UseDefaultReviewers)
 	}
 }

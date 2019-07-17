@@ -3,7 +3,7 @@ sudo: false
 go:
 - "1.10"
 
-go_import_path: github.com/coveo/lure
+go_import_path: github.com/coveooss/lure
 
 script:
 - go build lure.go

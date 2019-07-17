@@ -3,7 +3,6 @@ package lure
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
 )
 
@@ -42,10 +41,10 @@ func synchronizedBranches(auth Authentication, project Project, fromBranch strin
 	}
 
 	if len(commits) == 0 {
-		log.Printf("Branches %s and %s are identical\n", fromBranch, toBranch)
+		Logger.Infof("Branches %s and %s are identical\n", fromBranch, toBranch)
 		return nil
 	}
-	log.Printf("Found %d commits in %s missing from %s: %s\n", len(commits), fromBranch, toBranch, commits)
+	Logger.Infof("Found %d commits in %s missing from %s: %s\n", len(commits), fromBranch, toBranch, commits)
 
 	mergeBranch := "lure_merge_" + fromBranch + "_into_" + toBranch + "_" + commits[len(commits)-1]
 
@@ -62,7 +61,7 @@ func synchronizedBranches(auth Authentication, project Project, fromBranch strin
 	}
 
 	if os.Getenv("DRY_RUN") == "1" {
-		log.Println("Running in DryRun mode, not doing the pull request nor pushing the changes")
+		Logger.Info("Running in DryRun mode, not doing the pull request nor pushing the changes")
 	} else {
 		if _, err := repo.Push(); err != nil {
 			return err

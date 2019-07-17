@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -87,7 +86,7 @@ func getPullRequests(auth Authentication, username string, repoSlug string, igno
 
 	tmpList, e := getPRRequest(prRequest)
 	if e != nil {
-		log.Println("error: " + e.Error())
+		Logger.Error(e.Error())
 		return nil, e
 	}
 	list.PullRequest = append(list.PullRequest, tmpList.PullRequest...)
@@ -102,13 +101,13 @@ func getPullRequests(auth Authentication, username string, repoSlug string, igno
 			tmpList.Next = "" //Reset
 			tmpList, e = getPRRequest(prRequest)
 			if e != nil {
-				log.Println("error: " + e.Error())
+				Logger.Error(e.Error())
 				return nil, e
 			}
 			list.PullRequest = append(list.PullRequest, tmpList.PullRequest...)
 		}
 	}
-	log.Printf("Found %d PRs.", len(list.PullRequest))
+	Logger.Infof("Found %d PRs.", len(list.PullRequest))
 
 	return list.PullRequest, nil
 }
@@ -124,7 +123,7 @@ func getDefaultReviewers(auth Authentication, username string, repoSlug string) 
 	resp, err := client.Do(request)
 
 	if err != nil || resp.StatusCode < 200 || resp.StatusCode > 299 {
-		log.Println("Error getting default reviewers", client.LogString())
+		Logger.Error("Error getting default reviewers", client.LogString())
 		return nil, errors.New("Something went wrong getting default reviewers, got status code " + resp.Status)
 	}
 
@@ -136,7 +135,7 @@ func getDefaultReviewers(auth Authentication, username string, repoSlug string) 
 
 	defer resp.Body.Close()
 
-	log.Printf("Getting '%s' default reviewers returned %d: %d.", request.URL, resp.StatusCode, len(jsonresp.Values))
+	Logger.Tracef("Getting '%s' default reviewers returned %d: %d.", request.URL, resp.StatusCode, len(jsonresp.Values))
 
 	return jsonresp.Values, nil
 }
@@ -146,7 +145,7 @@ func getPRRequest(prRequest *http.Request) (*PullRequestList, error) {
 	resp, err := client.Do(prRequest)
 
 	if err != nil || resp.StatusCode < 200 || resp.StatusCode > 299 {
-		log.Println("Error getting PR Requests", client.LogString())
+		Logger.Error("Error getting PR Requests", client.LogString())
 		return nil, errors.New("Something went wrong getting PR, got status code " + resp.Status)
 	}
 
@@ -155,16 +154,15 @@ func getPRRequest(prRequest *http.Request) (*PullRequestList, error) {
 
 	defer resp.Body.Close()
 
-	log.Printf("Getting '%s' PR returned %d.", prRequest.URL, resp.StatusCode)
+	Logger.Tracef("Getting '%s' PR returned %d.", prRequest.URL, resp.StatusCode)
 	return &prList, nil
 }
 
 func createPullRequest(auth Authentication, sourceBranch string, destBranch string, owner string, repo string, title string, description string, useDefaultReviewers bool) error {
 	reviewers := []User{}
-	if (useDefaultReviewers) {
+	if useDefaultReviewers {
 		reviewers, _ = getDefaultReviewers(auth, owner, repo)
 	}
-
 
 	pr := PullRequest{
 		Title:       title,
@@ -180,7 +178,7 @@ func createPullRequest(auth Authentication, sourceBranch string, destBranch stri
 			},
 		},
 		CloseSourceBranch: true,
-		Reviewers: reviewers,
+		Reviewers:         reviewers,
 	}
 
 	buf := &bytes.Buffer{}
@@ -188,19 +186,19 @@ func createPullRequest(auth Authentication, sourceBranch string, destBranch stri
 
 	prRequest, err := createApiRequest(auth, "POST", fmt.Sprintf("/%s/%s/pullrequests/", owner, repo), buf)
 	if err != nil {
-		log.Println("Could not create a pull request")
+		Logger.Error("Could not create a pull request")
 		return err
 	}
 
 	prRequest.Header.Add("Content-Type", "application/json")
 
-	log.Printf("%v\n", prRequest)
+	Logger.Tracef("%v", prRequest)
 
 	client := getHTTPClient()
 	resp, err := client.Do(prRequest)
 
 	if err != nil {
-		log.Println("Error getting PR Requests", client.LogString())
+		Logger.Error("Error getting PR Requests", client.LogString())
 		return err
 	}
 
@@ -216,19 +214,19 @@ func declinePullRequest(auth Authentication, username string, repoSlug string, p
 	bitBucketPath := fmt.Sprintf("/%s/%s/pullrequests/%d/decline", username, repoSlug, pullRequestID)
 	prRequest, err := createApiRequest(auth, "POST", bitBucketPath, strings.NewReader("{}"))
 	if err != nil {
-		log.Println("Could not decline pull request")
+		Logger.Error("Could not decline pull request")
 		return err
 	}
 
 	prRequest.Header.Add("Content-Type", "application/json")
 
-	log.Printf("%v\n", prRequest)
+	Logger.Tracef("%v", prRequest)
 
 	client := getHTTPClient()
 	resp, err := client.Do(prRequest)
 
 	if err != nil {
-		log.Println("Error declining PR Request", client.LogString())
+		Logger.Error("Error declining PR Request", client.LogString())
 		return err
 	}
 

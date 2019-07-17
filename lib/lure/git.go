@@ -2,7 +2,6 @@ package lure
 
 import (
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 )
@@ -118,7 +117,7 @@ func (gitRepo GitRepo) GetActiveBranches() ([]string, error) {
 
 // CloseBranch deletes the branch for the remote repository
 func (gitRepo GitRepo) CloseBranch(branch string) error {
-	log.Printf("Closing branch %s.", branch)
+	Logger.Infof("Closing branch %s.", branch)
 	_, err := gitRepo.Cmd("push", gitRepo.remotePath, "--delete", branch)
 	return err
 }

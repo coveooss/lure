@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
 
-	"github.com/coveo/lure/lib/lure"
+	"github.com/coveooss/lure/lib/lure"
+	"github.com/sirupsen/logrus"
+
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/bitbucket"
 )
@@ -18,6 +19,7 @@ import (
 var (
 	mode     = flag.String("auth", "", "one of [oauth, env]")
 	confFile = flag.String("config", "", "path to config file")
+	verbose  = flag.Bool("verbose", false, "set to true to show more logs")
 
 	bitBucketOAuthConfig = oauth2.Config{
 		ClientID:     os.Getenv("BITBUCKET_CLIENT_ID"),
@@ -31,24 +33,33 @@ type CommandFunc func(auth lure.Authentication, project lure.Project, args map[s
 func main() {
 	flag.Parse()
 
+	if *verbose {
+		lure.Logger.Info("Log level set to verbose")
+		lure.Logger.SetLevel(logrus.TraceLevel)
+	} else {
+		lure.Logger.SetLevel(logrus.InfoLevel)
+	}
+
+	lure.Logger.SetOutput(os.Stdout)
+
 	config, err := loadConfig(*confFile)
 	if err != nil {
-		log.Printf("Error Loading Config with path '%s': %s\n", *confFile, err)
+		lure.Logger.Error(fmt.Sprintf("Error Loading Config with path '%s': %s\n", *confFile, err))
 		os.Exit(1)
 	}
 	if os.Getenv("DRY_RUN") == "1" {
-		log.Println("Running in DryRun mode, not doing the pull request nor pushing the changes")
+		lure.Logger.Info("Running in DryRun mode, not doing the pull request nor pushing the changes")
 	}
 
 	switch *mode {
 	case "oauth":
-		log.Println("Using OAuth Authentication")
+		lure.Logger.Info("Using OAuth Authentication")
 		mainWithOAuth(config)
 	case "env":
-		log.Println("Using Environment Authentication")
+		lure.Logger.Info("Using Environment Authentication")
 		mainWithEnvironmentAuth(config)
 	default:
-		log.Printf("Invalid auth mode: %s", *mode)
+		lure.Logger.Error("Invalid auth mode: %s", *mode)
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
@@ -67,19 +78,19 @@ func getCommand(commandName string) CommandFunc {
 
 func runMain(config *lure.LureConfig, auth lure.Authentication) {
 	for _, project := range config.Projects {
-		log.Println(fmt.Sprintf("Project: %s/%s", project.Owner, project.Name))
+		lure.Logger.Info(fmt.Sprintf("Project: %s/%s", project.Owner, project.Name))
 
 		lure.InitProjectDefaultValues(&project)
 
 		for _, command := range project.Commands {
-			log.Println(fmt.Sprintf("\tCommand: %s", command.Name))
+			lure.Logger.Info(fmt.Sprintf("Command: %s", command.Name))
 			commandFunc := getCommand(command.Name)
 
 			if commandFunc == nil {
-				log.Println(fmt.Sprintf("\tSkipping invalid command: %s", command.Name))
+				lure.Logger.Info(fmt.Sprintf("\tSkipping invalid command: %s", command.Name))
 			} else {
 				if err := commandFunc(auth, project, command.Args); err != nil {
-					log.Println(fmt.Sprintf("\tCommand failed: %s", err))
+					lure.Logger.Error(fmt.Sprintf("Command failed: %s", err))
 					os.Exit(1)
 				}
 			}
@@ -123,7 +134,7 @@ func mainWithOAuth(config *lure.LureConfig) {
 			return
 		}
 
-		log.Println("Token is", token)
+		lure.Logger.Println("Token is", token)
 
 		w.WriteHeader(http.StatusFound)
 		w.Write([]byte(`<html><body>Linking with Bitbucket worked - get out and wait for an update<script type="text/javascript">
@@ -152,13 +163,12 @@ func mainWithOAuth(config *lure.LureConfig) {
 	if os.Getenv("LURE_AUTO_OPEN_AUTH_PAGE") == "1" {
 		open(url)
 	} else {
-		log.Println("Open that page:" + url)
+		lure.Logger.Info("Open that page: " + url)
 	}
 
 	err := http.ListenAndServe(":"+port, mux)
 	if err != nil {
-		log.Println()
-		log.Printf("Error starting the webserver: %s", err)
+		lure.Logger.Error(fmt.Sprintf("Error starting the webserver: %s", err))
 	}
 }
 
@@ -190,6 +200,6 @@ func loadConfig(filePath string) (*lure.LureConfig, error) {
 		return nil, err
 	}
 	configJson, _ := json.Marshal(lureConfig)
-	log.Println("Config:", string(configJson))
+	lure.Logger.Println("Config:", string(configJson))
 	return lureConfig, nil
 }

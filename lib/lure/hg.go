@@ -3,7 +3,6 @@ package lure
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -146,37 +145,37 @@ func (hgRepo HgRepo) GetActiveBranches() ([]string, error) {
 
 // CloseBranch closes the branch then it merges it to a trash branch so no heads are left
 func (hgRepo HgRepo) CloseBranch(branch string) error {
-	log.Printf("Closing branch %s.", branch)
+	Logger.Infof("Closing branch %s.", branch)
 
 	if _, err := hgRepo.Cmd("update", "-C", branch); err != nil {
-		log.Printf("Error: \"Could not switch to branch %s\" %s", branch, err)
+		Logger.Errorf("Error: \"Could not switch to branch %s\" %s", branch, err)
 		return err
 	}
 
 	if _, err := hgRepo.Cmd("commit", "-m", "Close branch "+branch, "--close-branch"); err != nil {
-		log.Printf("Error: \"Could not commit\" %s", err)
+		Logger.Errorf("Error: \"Could not commit\" %s", err)
 		return err
 	}
 
 	if _, err := hgRepo.Update(hgRepo.trashBranch); err != nil {
-		log.Printf("Error: \"Could not switch to branch %s, trying to create it.\" %s", hgRepo.trashBranch, err)
+		Logger.Errorf("Error: \"Could not switch to branch %s, trying to create it.\" %s", hgRepo.trashBranch, err)
 		if _, err := hgRepo.Update(hgRepo.defaultBranch); err != nil {
-			log.Printf("Error: \"Could not switch to branch %s\" %s", hgRepo.defaultBranch, err)
+			Logger.Errorf("Error: \"Could not switch to branch %s\" %s", hgRepo.defaultBranch, err)
 			return err
 		}
 		if _, err := hgRepo.Branch(hgRepo.trashBranch); err != nil {
-			log.Printf("Error: \"Could not create branch %s\" %s", hgRepo.trashBranch, err)
+			Logger.Errorf("Error: \"Could not create branch %s\" %s", hgRepo.trashBranch, err)
 			return err
 		}
 	}
 
 	if err := hgRepo.fakeMerge(branch, hgRepo.trashBranch); err != nil {
-		log.Printf("Error: \"Could not fake merge branch %s to branch %s\" %s", branch, hgRepo.trashBranch, err)
+		Logger.Errorf("Error: \"Could not fake merge branch %s to branch %s\" %s", branch, hgRepo.trashBranch, err)
 		return err
 	}
 
 	if _, err := hgRepo.Push(); err != nil {
-		log.Printf("Error: \"Could not push closed branch %s\" %s", branch, err)
+		Logger.Errorf("Error: \"Could not push closed branch %s\" %s", branch, err)
 		return err
 	}
 

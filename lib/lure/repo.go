@@ -3,11 +3,11 @@ package lure
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"reflect"
 	"strings"
+
 	"github.com/vsekhar/govtil/guid"
 )
 
@@ -36,14 +36,14 @@ func cloneRepo(hgAuth Authentication, project Project) (Repo, error) {
 
 	var repo Repo
 	if err != nil {
-		log.Printf("Error: \"Could not generate guid\" %s", err)
+		Logger.Errorf("\"Could not generate guid\" %s", err)
 		return repo, err
 	}
 	repoPath := "/tmp/" + repoGUID.String()
 
 	projectRemote := "https://bitbucket.org/" + project.Owner + "/" + project.Name
 
-	log.Printf("Info: cloning: %s to %s", projectRemote, repoPath)
+	Logger.Infof("cloning: %s to %s", projectRemote, repoPath)
 
 	switch project.Vcs {
 	case Hg:
@@ -55,7 +55,7 @@ func cloneRepo(hgAuth Authentication, project Project) (Repo, error) {
 		err = fmt.Errorf("Unknown VCS '%s' - must be one of %s, %s", project.Vcs, Git, Hg)
 	}
 	if err != nil {
-		log.Printf("Error: \"Could not clone\" %s", err)
+		Logger.Errorf("\"Could not clone\" %s", err)
 		return repo, err
 	}
 
@@ -72,7 +72,7 @@ func checkForUpdatesJob(auth Authentication, project Project, commitMessage stri
 		return err
 	}
 
-	log.Printf("Info: switching %s to default branch: %s", repo.RemotePath(), project.DefaultBranch)
+	Logger.Infof("switching %s to default branch: %s", repo.RemotePath(), project.DefaultBranch)
 	if _, err := repo.Update(project.DefaultBranch); err != nil {
 		return fmt.Errorf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err)
 	}
@@ -91,7 +91,7 @@ func checkForUpdatesJob(auth Authentication, project Project, commitMessage stri
 		modulesToUpdate = appendIfMissing(modulesToUpdate, modulesToAdd)
 	}
 
-	log.Printf("Modules to update : %q", modulesToUpdate)
+	Logger.Infof("Modules to update : %q", modulesToUpdate)
 
 	ignoreDeclinedPRs := os.Getenv("IGNORE_DECLINED_PR") == "1"
 	pullRequests, err := getPullRequests(auth, project.Owner, project.Name, ignoreDeclinedPRs)
@@ -108,7 +108,7 @@ func checkForUpdatesJob(auth Authentication, project Project, commitMessage stri
 		return err
 	}
 
-	log.Printf("Info: Check for updates done.")
+	Logger.Infof("`[Check for updates done.")
 
 	return nil
 }
@@ -137,10 +137,10 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 	for _, pr := range existingPRs {
 		if !openPRAlreadyExists && strings.HasPrefix(pr.Source.Branch.Name, dependencyBranchVersionPrefix) {
 			if pr.State == "OPEN" {
-				log.Printf("There already is an open PR for: '%s'. The branch name is: %s.", title, pr.Source.Branch.Name)
+				Logger.Infof("There already is an open PR for: '%s'. The branch name is: %s.", title, pr.Source.Branch.Name)
 				openPRAlreadyExists = true
 			} else {
-				log.Printf("There was a declined PR for: '%s'. The branch name is: %s.", title, pr.Source.Branch.Name)
+				Logger.Infof("There was a declined PR for: '%s'. The branch name is: %s.", title, pr.Source.Branch.Name)
 				declinedPRAlreadyExists = true
 			}
 			continue
@@ -148,9 +148,9 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 
 		if pr.State == "OPEN" && strings.HasPrefix(pr.Source.Branch.Name, dependencyBranchPrefix) {
 			if os.Getenv("DRY_RUN") == "1" {
-				log.Printf("Running in DryRun mode. PR '%s' made for older version would be declined.", pr.Title)
+				Logger.Infof("Running in DryRun mode. PR '%s' made for older version would be declined.", pr.Title)
 			} else {
-				log.Printf("Declining PR '%s' made for older version.", pr.Title)
+				Logger.Infof("Declining PR '%s' made for older version.", pr.Title)
 				declinePullRequest(auth, project.Owner, project.Name, pr.ID)
 			}
 		}
@@ -159,14 +159,14 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 		return
 	}
 
-	log.Printf("Info: switching %s to default branch: %s", repo.LocalPath(), project.DefaultBranch)
+	Logger.Infof("switching %s to default branch: %s", repo.LocalPath(), project.DefaultBranch)
 	if _, err := repo.Update(project.DefaultBranch); err != nil {
-		log.Fatalf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err)
+		Logger.Fatalf("\"Could not switch to branch %s\" %s", project.DefaultBranch, err)
 	}
 
-	log.Printf("Creating branch %s\n", branch)
+	Logger.Infof("Creating branch %s\n", branch)
 	if _, err := repo.Branch(branch); err != nil {
-		log.Printf("Error: \"Could not create branch\" %s", err)
+		Logger.Errorf("\"Could not create branch\" %s", err)
 		return
 	}
 
@@ -184,20 +184,20 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 	}
 
 	if _, err := repo.Commit(Tprintf(commitMessage, map[string]interface{}{"module": moduleToUpdate.Module, "version": moduleToUpdate.Latest})); err != nil {
-		log.Printf("Error: \"Could not commit\" %s", err)
+		Logger.Errorf("\"Could not commit\" %s", err)
 		return
 	}
 
 	if os.Getenv("DRY_RUN") == "1" {
-		log.Println("Running in DryRun mode, not doing the pull request nor pushing the changes")
+		Logger.Info("Running in DryRun mode, not doing the pull request nor pushing the changes")
 	} else {
-		log.Printf("Pushing changes\n")
+		Logger.Info("Pushing changes")
 		if _, err := repo.Push(); err != nil {
-			log.Fatalf("Error: \"Could not push\" %s", err)
+			Logger.Fatalf("\"Could not push\" %s", err)
 			return
 		}
 
-		log.Printf("Creating PR\n")
+		Logger.Infof("Creating PR")
 
 		description := Tprintf(commitMessage, map[string]interface{}{"module": moduleToUpdate.Module, "version": moduleToUpdate.Latest})
 		createPullRequest(auth, branch, project.DefaultBranch, project.Owner, project.Name, title, description, *project.UseDefaultReviewers)
@@ -205,7 +205,7 @@ func updateModule(auth Authentication, moduleToUpdate moduleVersion, project Pro
 }
 
 func Execute(pwd string, command string, params ...string) (string, error) {
-	log.Printf("%s %q\n", command, params)
+	Logger.Tracef("%s %q\n", command, params)
 
 	cmd := exec.Command(command, params...)
 	cmd.Dir = pwd
@@ -217,19 +217,19 @@ func Execute(pwd string, command string, params ...string) (string, error) {
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		log.Println(stderr.String())
+		Logger.Error(stderr.String())
 		return "", err
 	}
 
 	out := buff.String()
 
-	log.Printf("\t%s\n", out)
+	Logger.Tracef("\t%s\n", out)
 
 	return out, nil
 }
 
 func closeOldBranchesWithoutOpenPR(auth Authentication, project Project, repo Repo) error {
-	log.Printf("Info: Cleaning up lure branches with no associated PRs.")
+	Logger.Info("Cleaning up lure branches with no associated PRs.")
 
 	branchPrefix := project.BranchPrefix
 	branches, err := repo.GetActiveBranches()
@@ -245,7 +245,7 @@ func closeOldBranchesWithoutOpenPR(auth Authentication, project Project, repo Re
 		if strings.HasPrefix(branch, branchPrefix) {
 			if isBranchDead(repo, branch, existingPRs) {
 				if os.Getenv("DRY_RUN") == "1" {
-					log.Printf("Running in DryRun mode. Branch '%s' would of been closed.", branch)
+					Logger.Infof("Running in DryRun mode. Branch '%s' would of been closed.", branch)
 				} else {
 					if err := repo.CloseBranch(branch); err != nil {
 						println(err)
@@ -255,7 +255,7 @@ func closeOldBranchesWithoutOpenPR(auth Authentication, project Project, repo Re
 			}
 		}
 	}
-	log.Printf("Info: Lure branches clean up done.")
+	Logger.Info("Lure branches clean up done.")
 
 	return nil
 }

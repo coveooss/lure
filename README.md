@@ -86,6 +86,9 @@ Environment variables:
 - `BITBUCKET_CLIENT_SECRET` the bitbucket OAuth **Secret** previously created
 - `DRY_RUN` won't create a PR
 
+Custom parameter:
+- `-verbose` Will print additionnal logs that could be helpful for debugging
+
 ## Develop
 
 ### GO environment setup

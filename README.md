@@ -1,7 +1,7 @@
 # lure
 
-[![Build Status](https://travis-ci.org/coveo/lure.svg)](https://travis-ci.org/coveo/lure)
-[![Go Report Card](https://goreportcard.com/badge/github.com/coveo/lure)](https://goreportcard.com/report/github.com/coveo/lure)
+[![Build Status](https://travis-ci.org/coveooss/lure.svg)](https://travis-ci.org/coveooss/lure)
+[![Go Report Card](https://goreportcard.com/badge/github.com/coveooss/lure)](https://goreportcard.com/report/github.com/coveooss/lure)
 
 Update your dependencies, with hooks, for developers.
 
@@ -72,7 +72,7 @@ eg, in jenkins:
 git config --global user.email "Youmail@example.com"
 git config --global user.name "jenkins"
 
-wget https://github.com/coveo/lure/releases/latest/download/lure-linux-amd64 -O lure
+wget https://github.com/coveooss/lure/releases/latest/download/lure-linux-amd64 -O lure
 chmod +x lure
 ./lure -auth env -config ${WORKSPACE}/lure.config
 
@@ -105,9 +105,9 @@ In your bitbucket app, set the callback url to `http://localhost:9090/callback`
 ### Project setup
 
 ```sh
-go get github.com/coveo/lure/
-cd $GOPATH/src/github.com/coveo/lure
-# or $HOME/go/src/coveo/lure if you don't have a $GOPATH set up which is perfectly fine
+go get github.com/coveooss/lure/
+cd $GOPATH/src/github.com/coveooss/lure
+# or $HOME/go/src/coveooss/lure if you don't have a $GOPATH set up which is perfectly fine
 go get ./...
 go run lure.go
 ```

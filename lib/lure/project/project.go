@@ -1,4 +1,4 @@
-package lure
+package project
 
 type Command struct {
 	Name string            `json:"name"`
@@ -16,6 +16,24 @@ type Project struct {
 	SkipPackageManager  map[string]bool `json:"skipPackageManager"`
 	UseDefaultReviewers *bool           `json:"useDefaultReviewers"`
 	Commands            []Command       `json:"commands"`
+}
+
+func (project Project) GetDefaultBranch() string {
+	return project.DefaultBranch
+}
+
+func (project Project) GetTrashBranch() string {
+	return project.TrashBranch
+}
+func (project Project) GetBasePath() string {
+	return project.BasePath
+}
+func (project Project) GetOwner() string {
+	return project.Owner
+}
+
+func (project Project) GetName() string {
+	return project.Name
 }
 
 type LureConfig struct {

@@ -71,4 +71,5 @@ out/
 .sfdx
 .vscode/settings.json
 /lure
+/lure-linux-amd64
 debug

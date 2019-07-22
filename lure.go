@@ -9,8 +9,13 @@ import (
 	"os/exec"
 	"runtime"
 
-	"github.com/coveooss/lure/lib/lure"
+	"github.com/coveooss/lure/lib/lure/command"
+	"github.com/coveooss/lure/lib/lure/log"
+	"github.com/coveooss/lure/lib/lure/project"
+	"github.com/coveooss/lure/lib/lure/provider"
+	"github.com/coveooss/lure/lib/lure/vcs"
 	"github.com/sirupsen/logrus"
+	"github.com/vsekhar/govtil/guid"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/bitbucket"
@@ -28,78 +33,94 @@ var (
 	}
 )
 
-type CommandFunc func(auth lure.Authentication, project lure.Project, args map[string]string) error
-
 func main() {
 	flag.Parse()
 
 	if *verbose {
-		lure.Logger.Info("Log level set to verbose")
-		lure.Logger.SetLevel(logrus.TraceLevel)
+		log.Logger.Info("Log level set to verbose")
+		log.Logger.SetLevel(logrus.TraceLevel)
 	} else {
-		lure.Logger.SetLevel(logrus.InfoLevel)
+		log.Logger.SetLevel(logrus.InfoLevel)
 	}
 
-	lure.Logger.SetOutput(os.Stdout)
+	log.Logger.SetOutput(os.Stdout)
+	log.Logger.SetReportCaller(true)
 
 	config, err := loadConfig(*confFile)
 	if err != nil {
-		lure.Logger.Error(fmt.Sprintf("Error Loading Config with path '%s': %s\n", *confFile, err))
+		log.Logger.Error(fmt.Sprintf("Error Loading Config with path '%s': %s\n", *confFile, err))
 		os.Exit(1)
 	}
+
 	if os.Getenv("DRY_RUN") == "1" {
-		lure.Logger.Info("Running in DryRun mode, not doing the pull request nor pushing the changes")
+		log.Logger.Info("Running in DryRun mode, not doing the pull request nor pushing the changes")
 	}
 
 	switch *mode {
 	case "oauth":
-		lure.Logger.Info("Using OAuth Authentication")
+		log.Logger.Info("Using OAuth Authentication")
 		mainWithOAuth(config)
 	case "env":
-		lure.Logger.Info("Using Environment Authentication")
+		log.Logger.Info("Using Environment Authentication")
 		mainWithEnvironmentAuth(config)
 	default:
-		lure.Logger.Error("Invalid auth mode: %s", *mode)
+		log.Logger.Errorf("Invalid auth mode: %s", *mode)
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
 }
 
-func getCommand(commandName string) CommandFunc {
-	switch commandName {
-	case "updateDependencies":
-		return lure.CheckForUpdatesJobCommand
-	case "synchronizedBranches":
-		return lure.SynchronizedBranchesCommand
-	}
+func runMain(config *project.LureConfig, auth vcs.Authentication) {
+	for _, projectConfig := range config.Projects {
+		log.Logger.Info(fmt.Sprintf("Project: %s/%s", projectConfig.Owner, projectConfig.Name))
 
-	return nil
-}
+		project.InitProjectDefaultValues(&projectConfig)
 
-func runMain(config *lure.LureConfig, auth lure.Authentication) {
-	for _, project := range config.Projects {
-		lure.Logger.Info(fmt.Sprintf("Project: %s/%s", project.Owner, project.Name))
+		repoGUID, err := guid.V4()
 
-		lure.InitProjectDefaultValues(&project)
+		if err != nil {
+			log.Logger.Fatalf("\"Could not generate guid\" %s", err)
+		}
+		localDestination := "/tmp/" + repoGUID.String()
 
-		for _, command := range project.Commands {
-			lure.Logger.Info(fmt.Sprintf("Command: %s", command.Name))
-			commandFunc := getCommand(command.Name)
+		provider := provider.New(auth, projectConfig)
 
-			if commandFunc == nil {
-				lure.Logger.Info(fmt.Sprintf("\tSkipping invalid command: %s", command.Name))
-			} else {
-				if err := commandFunc(auth, project, command.Args); err != nil {
-					lure.Logger.Error(fmt.Sprintf("Command failed: %s", err))
-					os.Exit(1)
-				}
+		var sourceControl vcs.SourceControl
+		switch projectConfig.Vcs {
+		case vcs.Hg:
+			sourceControl, err = vcs.NewHg(auth, provider.URL, localDestination, projectConfig.GetDefaultBranch(), projectConfig.GetDefaultBranch(), projectConfig.GetBasePath())
+		case vcs.Git:
+			sourceControl, err = vcs.NewGit(auth, provider.URL, localDestination, projectConfig.GetBasePath())
+		default:
+			//repo = nil
+			err = fmt.Errorf("Unknown VCS '%s' - must be one of %s, %s", projectConfig.Vcs, vcs.Git, vcs.Hg)
+		}
+
+		sourceControl.Clone()
+		
+
+		for _, cmd := range projectConfig.Commands {
+			log.Logger.Info(fmt.Sprintf("Command: %s", cmd.Name))
+			var err error
+			switch cmd.Name {
+			case "updateDependencies":
+				err = command.CheckForUpdatesJobCommand(projectConfig, sourceControl, provider, cmd.Args)
+			case "synchronizedBranches":
+				err = command.SynchronizedBranchesCommand(projectConfig, sourceControl, provider, cmd.Args)
+			default:
+				log.Logger.Info(fmt.Sprintf("\tSkipping invalid command: %s", cmd.Name))
+			}
+
+			if err != nil {
+				log.Logger.Error(fmt.Sprintf("Command failed: %s", err))
+				os.Exit(1)
 			}
 		}
 	}
 }
 
-func mainWithEnvironmentAuth(config *lure.LureConfig) {
-	auth := lure.UserPassAuth{
+func mainWithEnvironmentAuth(config *project.LureConfig) {
+	auth := vcs.UserPassAuth{
 		Username: os.Getenv("BITBUCKET_USERNAME"),
 		Password: os.Getenv("BITBUCKET_PASSWORD"),
 	}
@@ -107,7 +128,7 @@ func mainWithEnvironmentAuth(config *lure.LureConfig) {
 	runMain(config, auth)
 }
 
-func mainWithOAuth(config *lure.LureConfig) {
+func mainWithOAuth(config *project.LureConfig) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, bitBucketOAuthConfig.AuthCodeURL(""), http.StatusFound)
@@ -134,7 +155,7 @@ func mainWithOAuth(config *lure.LureConfig) {
 			return
 		}
 
-		lure.Logger.Println("Token is", token)
+		log.Logger.Println("Token is", token)
 
 		w.WriteHeader(http.StatusFound)
 		w.Write([]byte(`<html><body>Linking with Bitbucket worked - get out and wait for an update<script type="text/javascript">
@@ -147,7 +168,7 @@ func mainWithOAuth(config *lure.LureConfig) {
 		   </script></body></html>`))
 
 		go (func() {
-			auth := lure.TokenAuth{token.AccessToken}
+			auth := vcs.TokenAuth{token.AccessToken}
 
 			runMain(config, auth)
 			os.Exit(0)
@@ -163,12 +184,12 @@ func mainWithOAuth(config *lure.LureConfig) {
 	if os.Getenv("LURE_AUTO_OPEN_AUTH_PAGE") == "1" {
 		open(url)
 	} else {
-		lure.Logger.Info("Open that page: " + url)
+		log.Logger.Info("Open that page: " + url)
 	}
 
 	err := http.ListenAndServe(":"+port, mux)
 	if err != nil {
-		lure.Logger.Error(fmt.Sprintf("Error starting the webserver: %s", err))
+		log.Logger.Error(fmt.Sprintf("Error starting the webserver: %s", err))
 	}
 }
 
@@ -189,17 +210,17 @@ func open(url string) error {
 	return exec.Command(cmd, args...).Start()
 }
 
-func loadConfig(filePath string) (*lure.LureConfig, error) {
+func loadConfig(filePath string) (*project.LureConfig, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	lureConfig := &lure.LureConfig{}
+	lureConfig := &project.LureConfig{}
 	if err := json.NewDecoder(file).Decode(lureConfig); err != nil {
 		return nil, err
 	}
 	configJson, _ := json.Marshal(lureConfig)
-	lure.Logger.Println("Config:", string(configJson))
+	log.Logger.Trace("Config:", string(configJson))
 	return lureConfig, nil
 }

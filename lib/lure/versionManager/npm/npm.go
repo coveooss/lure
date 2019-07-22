@@ -1,4 +1,4 @@
-package lure
+package npm
 
 import (
 	"bufio"
@@ -10,24 +10,26 @@ import (
 	"regexp"
 
 	"github.com/blang/semver"
+	"github.com/coveooss/lure/lib/lure/log"
+	"github.com/coveooss/lure/lib/lure/versionManager"
 )
 
 type packageJSON map[string]interface{}
 
-func npmOutdated(path string) []moduleVersion {
+func NpmOutdated(path string) []versionManager.ModuleVersion {
 	const packageJSONDefaultFileName = "package.json"
 	if _, err := os.Stat(path + packageJSONDefaultFileName); os.IsNotExist(err) {
-		Logger.Infof(packageJSONDefaultFileName + " doesn't exist, skipping npm update")
-		return make([]moduleVersion, 0, 0)
+		log.Logger.Infof(packageJSONDefaultFileName + " doesn't exist, skipping npm update")
+		return make([]versionManager.ModuleVersion, 0, 0)
 	}
 
-	Logger.Infof("Running npm install")
+	log.Logger.Infof("Running npm install")
 	cmd := exec.Command("npm", "install")
 	cmd.Dir = path
 	err := cmd.Run()
 	if err != nil {
-		Logger.Errorf("Could not npm install: '%s'\n", err)
-		return make([]moduleVersion, 0, 0)
+		log.Logger.Errorf("Could not npm install: '%s'\n", err)
+		return make([]versionManager.ModuleVersion, 0, 0)
 	}
 
 	cmd = exec.Command("npm", "outdated")
@@ -45,11 +47,11 @@ func npmOutdated(path string) []moduleVersion {
 
 	lineIndex := 0
 
-	version := make([]moduleVersion, 0, 0)
+	version := make([]versionManager.ModuleVersion, 0, 0)
 	for scanner.Scan() {
 		if lineIndex != 0 {
 			result := npmRegex.FindStringSubmatch(scanner.Text())
-			mv := moduleVersion{
+			mv := versionManager.ModuleVersion{
 				Type:    "npm",
 				Module:  result[1],
 				Wanted:  result[3],
@@ -60,7 +62,7 @@ func npmOutdated(path string) []moduleVersion {
 			latestVersion, _ := semver.Parse(mv.Latest)
 
 			if wantedVersion.LT(latestVersion) {
-				Logger.Infof("Including NPM version %s", mv)
+				log.Logger.Infof("Including NPM version %s", mv)
 				version = append(version, mv)
 			}
 		}
@@ -70,7 +72,9 @@ func npmOutdated(path string) []moduleVersion {
 	return version
 }
 
-func readPackageJSON(dir string, module string, version string) (bool, error) {
+func UpdateDependency(dir string, moduleToUpdate versionManager.ModuleVersion) (bool, error) {
+	module := moduleToUpdate.Module
+	version := moduleToUpdate.Latest
 	packageJSONBuffer, _ := ioutil.ReadFile(dir + "/package.json")
 	var parsedPackageJSON packageJSON
 

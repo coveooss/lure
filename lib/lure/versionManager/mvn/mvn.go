@@ -1,4 +1,4 @@
-package lure
+package mvn
 
 import (
 	"bufio"
@@ -12,14 +12,17 @@ import (
 	"os"
 	"strings"
 
+	"github.com/coveooss/lure/lib/lure/log"
+	osUtils "github.com/coveooss/lure/lib/lure/os"
+	"github.com/coveooss/lure/lib/lure/versionManager"
 	"launchpad.net/xmlpath"
 )
 
-func mvnOutdated(path string) (error, []moduleVersion) {
+func MvnOutdated(path string) (error, []versionManager.ModuleVersion) {
 	const pomDefaultFileName = "pom.xml"
 	if !fileExists(path + pomDefaultFileName) {
-		Logger.Info(pomDefaultFileName + " doesn't exist, skipping mvn update")
-		return nil, make([]moduleVersion, 0, 0)
+		log.Logger.Info(pomDefaultFileName + " doesn't exist, skipping mvn update")
+		return nil, make([]versionManager.ModuleVersion, 0, 0)
 	}
 
 	var cmd *exec.Cmd
@@ -36,11 +39,11 @@ func mvnOutdated(path string) (error, []moduleVersion) {
 	err := cmd.Run()
 
 	if err != nil {
-		Logger.Error("Error running mvn versions:display-dependency-updates")
-		Logger.Error(out.String())
-		Logger.Error(stderr.String())
-		Logger.Error(err)
-		return err, make([]moduleVersion, 0, 0)
+		log.Logger.Error("Error running mvn versions:display-dependency-updates")
+		log.Logger.Error(out.String())
+		log.Logger.Error(stderr.String())
+		log.Logger.Error(err)
+		return err, make([]versionManager.ModuleVersion, 0, 0)
 	}
 
 	reader := bytes.NewReader(out.Bytes())
@@ -49,12 +52,12 @@ func mvnOutdated(path string) (error, []moduleVersion) {
 	mvnPackageRegex, _ := regexp.Compile(`\s*\[INFO\]\s+((?:[a-zA-Z0-9$_-]\.?)+):((?:[a-zA-Z0-9$_-]\.?)+)\s+`)
 	mvnVersionRegex, _ := regexp.Compile(`((?:[a-zA-Z0-9$_-]\.?)+)\s+->\s+((?:[a-zA-Z0-9$_-]\.?)+)\s*`)
 
-	version := make([]moduleVersion, 0, 0)
+	version := make([]versionManager.ModuleVersion, 0, 0)
 	var lastPackage []string
 	var modulePropertyMap map[string]string = getModulePropertyMap(path)
 
 	for scanner.Scan() {
-		Logger.Tracef("> %s\n", scanner.Text())
+		log.Logger.Tracef("> %s\n", scanner.Text())
 		packageName := mvnPackageRegex.FindStringSubmatch(scanner.Text())
 		if packageName != nil {
 			lastPackage = packageName
@@ -63,8 +66,8 @@ func mvnOutdated(path string) (error, []moduleVersion) {
 		packageVersion := mvnVersionRegex.FindStringSubmatch(scanner.Text())
 		if packageVersion != nil {
 
-			Logger.Tracef(">%q - %q\n", packageName, packageVersion)
-			mv := moduleVersion{
+			log.Logger.Tracef(">%q - %q\n", packageName, packageVersion)
+			mv := versionManager.ModuleVersion{
 				Type:    "maven",
 				Module:  lastPackage[1] + ":" + lastPackage[2],
 				Current: packageVersion[1],
@@ -72,7 +75,7 @@ func mvnOutdated(path string) (error, []moduleVersion) {
 				Latest:  packageVersion[2],
 				Name:    modulePropertyMap[lastPackage[1]+":"+lastPackage[2]],
 			}
-			Logger.Info(mv)
+			log.Logger.Trace(mv)
 			version = append(version, mv)
 		}
 	}
@@ -92,11 +95,11 @@ func getModulePropertyMap(path string) map[string]string {
 	err := cmd.Run()
 
 	if err != nil {
-		Logger.Error("Error running mvn -q --also-make exec:exec -Dexec.executable=pwd")
-		Logger.Error(err)
-		Logger.Error(out.String())
-		Logger.Error(stree.String())
-		Logger.Fatal(err)
+		log.Logger.Error("Error running mvn -q --also-make exec:exec -Dexec.executable=pwd")
+		log.Logger.Error(err)
+		log.Logger.Error(out.String())
+		log.Logger.Error(stree.String())
+		log.Logger.Fatal(err)
 	}
 
 	reader := bytes.NewReader(out.Bytes())
@@ -104,7 +107,7 @@ func getModulePropertyMap(path string) map[string]string {
 
 	var folders []string
 	for scanner.Scan() {
-		Logger.Infof(scanner.Text())
+		log.Logger.Infof(scanner.Text())
 		folders = append(folders, scanner.Text())
 	}
 
@@ -113,14 +116,14 @@ func getModulePropertyMap(path string) map[string]string {
 	for _, folder := range folders {
 		xmlFile, err := os.Open(folder + "/pom.xml")
 		if err != nil {
-			Logger.Error("Error opening file:", err)
+			log.Logger.Error("Error opening file:", err)
 			break
 		}
 		defer xmlFile.Close()
 
 		b, _ := ioutil.ReadAll(xmlFile)
 
-		var mvnProject project
+		var mvnProject mvnProjectDef
 		xml.Unmarshal(b, &mvnProject)
 
 		for _, dep := range mvnProject.Dependencies {
@@ -132,7 +135,7 @@ func getModulePropertyMap(path string) map[string]string {
 	return moduleProperties
 }
 
-type project struct {
+type mvnProjectDef struct {
 	ModelVersion string        `xml:"modelVersion"`
 	Properties   PropertyArray `xml:"properties"`
 	Dependencies []struct {
@@ -153,7 +156,7 @@ type Property struct {
 type property struct {
 }
 
-func mvnUpdateDep(path string, moduleVersion moduleVersion) (bool, error) { //dependency string, version string)
+func UpdateDependency(path string, moduleVersion versionManager.ModuleVersion) (bool, error) { //dependency string, version string)
 	dependency := moduleVersion.Module
 	version := moduleVersion.Latest
 
@@ -171,8 +174,8 @@ func mvnUpdateDep(path string, moduleVersion moduleVersion) (bool, error) { //de
 		err := cmd.Run()
 
 		if err != nil {
-			Logger.Error(stderr.String())
-			Logger.Fatal(err)
+			log.Logger.Error(stderr.String())
+			log.Logger.Fatal(err)
 		}
 
 		reader := bytes.NewReader(out.Bytes())
@@ -180,32 +183,32 @@ func mvnUpdateDep(path string, moduleVersion moduleVersion) (bool, error) { //de
 
 		var folders []string
 		for scanner.Scan() {
-			Logger.Info(scanner.Text())
+			log.Logger.Info(scanner.Text())
 			folders = append(folders, scanner.Text())
 		}
 
 		for _, folder := range folders {
 			xmlFile, err := os.Open(folder + "/pom.xml")
 			if err != nil {
-				Logger.Println("Error opening file:", err)
+				log.Logger.Println("Error opening file:", err)
 				return false, err
 			}
 			defer xmlFile.Close()
 
 			b, _ := ioutil.ReadAll(xmlFile)
 
-			var mvnProject project
+			var mvnProject mvnProjectDef
 			xml.Unmarshal(b, &mvnProject)
 
 			for _, property := range mvnProject.Properties.PropertyList {
 				if property.XMLName.Local == moduleVersion.Name {
-					Logger.Infof("%s : %s : %s", folder, property.XMLName.Local, property.Value)
+					log.Logger.Infof("%s : %s : %s", folder, property.XMLName.Local, property.Value)
 					var propertyToReplace = strings.TrimRight(strings.TrimLeft(moduleVersion.Name, "${"), "}")
 
 					for _, folder2 := range folders {
 						xmlFile, err := os.Open(folder2 + "/pom.xml")
 						if err != nil {
-							Logger.Error("Error opening file:", err)
+							log.Logger.Error("Error opening file:", err)
 							return false, err
 						}
 						defer xmlFile.Close()
@@ -214,7 +217,7 @@ func mvnUpdateDep(path string, moduleVersion moduleVersion) (bool, error) { //de
 							propertyToReplace)
 						root, err := xmlpath.Parse(xmlFile)
 						if err != nil {
-							Logger.Fatal(err)
+							log.Logger.Fatal(err)
 						}
 						if _, ok := path.String(root); ok {
 							b, _ := ioutil.ReadFile(folder2 + "/pom.xml")
@@ -234,14 +237,14 @@ func mvnUpdateDep(path string, moduleVersion moduleVersion) (bool, error) { //de
 		}
 	} else {
 		var autoUpdateResult string
-		autoUpdateResult, err = Execute(path, "mvn", "-B", "org.codehaus.mojo:versions-maven-plugin:2.4:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
+		autoUpdateResult, err = osUtils.Execute(path, "mvn", "-B", "org.codehaus.mojo:versions-maven-plugin:2.4:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
 		if strings.Contains(autoUpdateResult, fmt.Sprintf("Updated %s:jar:%s to version %s", dependency, moduleVersion.Current, version)) == true {
 			hasUpdate = true
 		}
 	}
 
 	if hasUpdate == true {
-		Logger.Infof("Updated %s:%s:jar:%s to version %s", moduleVersion.Module, dependency, moduleVersion.Current, version)
+		log.Logger.Infof("Updated %s:%s:jar:%s to version %s", moduleVersion.Module, dependency, moduleVersion.Current, version)
 	}
 
 	return hasUpdate, err

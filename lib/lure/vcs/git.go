@@ -1,40 +1,24 @@
-package lure
+package vcs
 
 import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/coveooss/lure/lib/lure/log"
+	osutil "github.com/coveooss/lure/lib/lure/os"
 )
 
 type GitRepo struct {
 	workingPath string
 	localPath   string
 	remotePath  string
-
-	userPass UserPassAuth
 }
 
-func GitSanitizeBranchName(name string) string {
-	reg, _ := regexp.Compile("[^a-zA-Z0-9_-]+")
-	safe := reg.ReplaceAllString(name, "_")
-	return safe
-}
-
-func GitClone(auth Authentication, source string, to string, basePath string) (GitRepo, error) {
+func NewGit(auth Authentication, source string, to string, basePath string) (GitRepo, error) {
 	var repo GitRepo
 
-	switch auth := auth.(type) {
-	case TokenAuth:
-		source = strings.Replace(source, "://", fmt.Sprintf("://x-token-auth:%s@", auth.Token), 1)
-	case UserPassAuth:
-		source = strings.Replace(source, "://", fmt.Sprintf("://%s:%s@", auth.Username, auth.Password), 1)
-	}
-
-	args := []string{"clone", source, to}
-
-	if _, err := Execute("", "git", args...); err != nil {
-		return repo, err
-	}
+	source = auth.AuthenticateURL(source)
 
 	var workingPath strings.Builder
 	workingPath.WriteString(to)
@@ -50,6 +34,23 @@ func GitClone(auth Authentication, source string, to string, basePath string) (G
 	return repo, nil
 }
 
+func (gitRepo GitRepo) SanitizeBranchName(branchName string) string {
+	//TODO: https://wincent.com/wiki/Legal_Git_branch_names
+	reg, _ := regexp.Compile("[^a-zA-Z0-9_-]+")
+	safe := reg.ReplaceAllString(branchName, "_")
+	return safe
+}
+
+func (gitRepo GitRepo) Clone() error {
+	log.Logger.Infof("cloning to %s", gitRepo.localPath)
+	args := []string{"clone", gitRepo.remotePath, gitRepo.localPath}
+
+	if _, err := osutil.Execute("", "git", args...); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (gitRepo GitRepo) WorkingPath() string {
 	return gitRepo.workingPath
 }
@@ -63,7 +64,7 @@ func (gitRepo GitRepo) RemotePath() string {
 }
 
 func (gitRepo GitRepo) Cmd(args ...string) (string, error) {
-	return Execute(gitRepo.localPath, "git", args...)
+	return osutil.Execute(gitRepo.localPath, "git", args...)
 }
 
 func (gitRepo GitRepo) Update(rev string) (string, error) {
@@ -71,7 +72,7 @@ func (gitRepo GitRepo) Update(rev string) (string, error) {
 }
 
 func (gitRepo GitRepo) Branch(branchname string) (string, error) {
-	return gitRepo.Cmd("checkout", "-b", GitSanitizeBranchName(branchname))
+	return gitRepo.Cmd("checkout", "-b", gitRepo.SanitizeBranchName(branchname))
 }
 
 func (gitRepo GitRepo) Commit(message string) (string, error) {
@@ -86,7 +87,7 @@ func (gitRepo GitRepo) Push() (string, error) {
 	return gitRepo.Cmd("push", gitRepo.remotePath)
 }
 
-func (gitRepo GitRepo) LogCommitsBetween(baseRev string, secondRev string) ([]string, error) {
+func (gitRepo GitRepo) CommitsBetween(baseRev string, secondRev string) ([]string, error) {
 	out, err := gitRepo.Cmd("log", "--pretty=%h", fmt.Sprintf("%s...%s", baseRev, secondRev))
 	if err != nil {
 		return []string{}, err
@@ -96,8 +97,8 @@ func (gitRepo GitRepo) LogCommitsBetween(baseRev string, secondRev string) ([]st
 	return append(lines[:0], lines[:len(lines)-1]...), nil
 }
 
-// GetActiveBranches returns all currently active branches without origin/ prefix
-func (gitRepo GitRepo) GetActiveBranches() ([]string, error) {
+// ActiveBranches returns all currently active branches without origin/ prefix
+func (gitRepo GitRepo) ActiveBranches() ([]string, error) {
 	out, err := gitRepo.Cmd("branch", "-r")
 	if err != nil {
 		return nil, err
@@ -117,7 +118,11 @@ func (gitRepo GitRepo) GetActiveBranches() ([]string, error) {
 
 // CloseBranch deletes the branch for the remote repository
 func (gitRepo GitRepo) CloseBranch(branch string) error {
-	Logger.Infof("Closing branch %s.", branch)
+	log.Logger.Infof("Closing branch %s.", branch)
 	_, err := gitRepo.Cmd("push", gitRepo.remotePath, "--delete", branch)
 	return err
+}
+
+func (gitRepo GitRepo) GetName() string {
+	return Git
 }

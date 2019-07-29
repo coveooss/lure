@@ -1,4 +1,4 @@
-package lure
+package log
 
 import (
 	"github.com/sirupsen/logrus"

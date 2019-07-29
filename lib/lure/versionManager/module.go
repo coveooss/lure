@@ -1,8 +1,8 @@
-package lure
+package versionManager
 
 type UpdateFunc func() error
 
-type moduleVersion struct {
+type ModuleVersion struct {
 	Type    string
 	Module  string
 	Current string

@@ -81,9 +81,11 @@ chmod +x lure
 You need bitbucket api-key and api-secret, see, the [bitbucket documentation](https://confluence.atlassian.com/bitbucket/oauth-on-bitbucket-cloud-238027431.html#OAuthonBitbucketCloud-OAuth2.0) for OAuth setup.
 
 Environment variables:
+
 - `IGNORE_DECLINED_PR=1` Will ignore declined PR when looking if the PR exists
 - `BITBUCKET_CLIENT_ID` the bitbucket OAuth **Key** previously created
 - `BITBUCKET_CLIENT_SECRET` the bitbucket OAuth **Secret** previously created
+- `LURE_AUTO_OPEN_AUTH_PAGE` automaticaly open the browser when using OAuth
 - `DRY_RUN` won't create a PR
 
 Custom parameter:

@@ -24,8 +24,6 @@ func SynchronizedBranchesCommand(project project.Project, sourceControl sourceCo
 }
 
 func synchronizedBranches(project project.Project, sourceControl sourceControl, repository repository, fromBranch string, toBranch string) error {
-
-	// if git, setup a tracking branch to avoid having to prefix origin/ later
 	if _, err := sourceControl.Update(toBranch); err != nil {
 		return err
 	}

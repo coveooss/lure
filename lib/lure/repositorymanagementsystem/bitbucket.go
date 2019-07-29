@@ -235,10 +235,6 @@ func (bitbucket BitBucket) createApiRequest(method string, path string, body io.
 	}
 
 	bitbucket.authentication.AuthenticateHTTPRequest(request.Header)
-	// switch auth := bitbucket.authentication.(type) {
-	// case vcs.TokenAuth:
-	// 	request.Header.Add("Authorization", "Bearer "+auth.Token)
-	// }
 
 	return request, err
 }

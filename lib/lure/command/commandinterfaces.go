@@ -20,7 +20,7 @@ type sourceControl interface {
 }
 
 type repository interface {
-	CreatePullRequest(string, string, string, string, string, string, bool) error
+	CreatePullRequest(sourceBranch string, destBranch string, owner string, repo string, title string, description string, useDefaultReviewers bool) error
 	GetPullRequests(string, string, bool) ([]managementsystem.PullRequest, error)
 	DeclinePullRequest(string, string, int) error
 }

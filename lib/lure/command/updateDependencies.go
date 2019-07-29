@@ -78,7 +78,7 @@ func checkForUpdatesJob(project project.Project, sourceControl sourceControl, re
 		return err
 	}
 
-	log.Logger.Infof("`[Check for updates done.")
+	log.Logger.Infof("Check for updates done.")
 
 	return nil
 }

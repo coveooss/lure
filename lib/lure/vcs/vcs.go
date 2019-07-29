@@ -54,7 +54,7 @@ type SourceControl interface {
 	Clone() error
 	SanitizeBranchName(branchName string) string
 
-	LogCommitsBetween(baseRev string, secondRev string) ([]string, error)
+	CommitsBetween(baseRev string, secondRev string) ([]string, error)
 
 	GetName() string
 }

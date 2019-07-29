@@ -87,7 +87,7 @@ func (gitRepo GitRepo) Push() (string, error) {
 	return gitRepo.Cmd("push", gitRepo.remotePath)
 }
 
-func (gitRepo GitRepo) LogCommitsBetween(baseRev string, secondRev string) ([]string, error) {
+func (gitRepo GitRepo) CommitsBetween(baseRev string, secondRev string) ([]string, error) {
 	out, err := gitRepo.Cmd("log", "--pretty=%h", fmt.Sprintf("%s...%s", baseRev, secondRev))
 	if err != nil {
 		return []string{}, err

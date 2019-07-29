@@ -8,7 +8,7 @@ import (
 
 type sourceControl interface {
 	Update(string) (string, error)
-	LogCommitsBetween(string, string) ([]string, error)
+	CommitsBetween(string, string) ([]string, error)
 	Branch(string) (string, error)
 	Push() (string, error)
 	WorkingPath() string

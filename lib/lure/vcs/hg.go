@@ -140,7 +140,7 @@ func (hgRepo HgRepo) PushDefault() (string, error) {
 	return hgRepo.Cmd("push", "--new-branch")
 }
 
-func (hgRepo HgRepo) LogCommitsBetween(baseRev string, secondRev string) ([]string, error) {
+func (hgRepo HgRepo) CommitsBetween(baseRev string, secondRev string) ([]string, error) {
 	out, err := hgRepo.Cmd("log", "-r", "ancestors("+secondRev+") and not ancestors("+baseRev+")", "--template", "{node}\n")
 	if err != nil {
 		return []string{}, err

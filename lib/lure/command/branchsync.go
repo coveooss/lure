@@ -34,7 +34,7 @@ func synchronizedBranches(project project.Project, sourceControl sourceControl, 
 		return err
 	}
 
-	commits, err := sourceControl.LogCommitsBetween(toBranch, fromBranch)
+	commits, err := sourceControl.CommitsBetween(toBranch, fromBranch)
 	if err != nil {
 		return err
 	}

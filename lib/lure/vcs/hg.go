@@ -34,19 +34,6 @@ func NewHg(auth Authentication, source string, to string, defaultBranch string, 
 		trashBranch:   trashBranch,
 	}
 
-	//TODO : validate that it works
-	// switch auth := auth.(type) {
-	// case TokenAuth:
-	// 	source = strings.Replace(source, "://", fmt.Sprintf("://x-token-auth:%s@", auth.Token), 1)
-	// case UserPassAuth:
-	// 	repo.SetUserPas(auth.Username, auth.Password)
-	// 	repo.authArgs = append([]string{
-	// 		"--config", "auth.repo.prefix=*",
-	// 		"--config", "auth.repo.username=" + auth.Username,
-	// 		"--config", "auth.repo.password=" + auth.Password,
-	// 	}, repo.authArgs...)
-	// }
-
 	return repo, nil
 }
 
@@ -105,8 +92,6 @@ func (hgRepo HgRepo) Update(rev string) (string, error) {
 }
 
 func (hgRepo HgRepo) Branch(branchname string) (string, error) {
-	//return hgRepo.Cmd("branch", hgRepo.SanitizeBranchName(branchname))
-
 	branch, err := hgRepo.Cmd("branch", hgRepo.SanitizeBranchName(branchname))
 	if err != nil {
 		return "", err

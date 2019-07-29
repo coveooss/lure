@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/coveooss/lure/lib/lure/log"
-	osUtils "github.com/coveooss/lure/lib/lure/os"
+	osutil "github.com/coveooss/lure/lib/lure/os"
 )
 
 type HgRepo struct {
@@ -60,7 +60,7 @@ func (hgRepo HgRepo) Clone() error {
 	log.Logger.Infof("cloning to %s", hgRepo.localPath)
 	args := []string{"clone", hgRepo.remotePath, hgRepo.localPath}
 
-	if _, err := osUtils.Execute("", "hg", args...); err != nil {
+	if _, err := osutil.Execute("", "hg", args...); err != nil {
 		return err
 	}
 	return nil
@@ -83,7 +83,7 @@ func (hgRepo HgRepo) RemotePath() string {
 }
 
 func (hgRepo HgRepo) Cmd(args ...string) (string, error) {
-	return osUtils.Execute(hgRepo.localPath, "hg", args...)
+	return osutil.Execute(hgRepo.localPath, "hg", args...)
 }
 
 func (hgRepo HgRepo) SetUserPas(user string, pass string) error {

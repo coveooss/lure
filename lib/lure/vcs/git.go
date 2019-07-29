@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/coveooss/lure/lib/lure/log"
-	"github.com/coveooss/lure/lib/lure/os"
+	osutil "github.com/coveooss/lure/lib/lure/os"
 )
 
 type GitRepo struct {
@@ -45,7 +45,7 @@ func (gitRepo GitRepo) Clone() error {
 	log.Logger.Infof("cloning to %s", gitRepo.localPath)
 	args := []string{"clone", gitRepo.remotePath, gitRepo.localPath}
 
-	if _, err := os.Execute("", "git", args...); err != nil {
+	if _, err := osutil.Execute("", "git", args...); err != nil {
 		return err
 	}
 	return nil
@@ -64,7 +64,7 @@ func (gitRepo GitRepo) RemotePath() string {
 }
 
 func (gitRepo GitRepo) Cmd(args ...string) (string, error) {
-	return os.Execute(gitRepo.localPath, "git", args...)
+	return osutil.Execute(gitRepo.localPath, "git", args...)
 }
 
 func (gitRepo GitRepo) Update(rev string) (string, error) {

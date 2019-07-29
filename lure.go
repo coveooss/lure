@@ -12,7 +12,7 @@ import (
 	"github.com/coveooss/lure/lib/lure/command"
 	"github.com/coveooss/lure/lib/lure/log"
 	"github.com/coveooss/lure/lib/lure/project"
-	"github.com/coveooss/lure/lib/lure/provider"
+	repository "github.com/coveooss/lure/lib/lure/repositorymanagementsystem"
 	"github.com/coveooss/lure/lib/lure/vcs"
 	"github.com/sirupsen/logrus"
 	"github.com/vsekhar/govtil/guid"
@@ -83,7 +83,7 @@ func runMain(config *project.LureConfig, auth vcs.Authentication) {
 		}
 		localDestination := "/tmp/" + repoGUID.String()
 
-		provider := provider.New(auth, projectConfig)
+		provider := repository.New(auth, projectConfig)
 
 		var sourceControl vcs.SourceControl
 		switch projectConfig.Vcs {
@@ -97,7 +97,6 @@ func runMain(config *project.LureConfig, auth vcs.Authentication) {
 		}
 
 		sourceControl.Clone()
-		
 
 		for _, cmd := range projectConfig.Commands {
 			log.Logger.Info(fmt.Sprintf("Command: %s", cmd.Name))

@@ -2,7 +2,7 @@ package command
 
 import (
 	"github.com/coveooss/lure/lib/lure/project"
-	p "github.com/coveooss/lure/lib/lure/provider"
+	managementsystem "github.com/coveooss/lure/lib/lure/repositorymanagementsystem"
 	"github.com/coveooss/lure/lib/lure/vcs"
 )
 
@@ -19,10 +19,10 @@ type sourceControl interface {
 	Commit(string) (string, error)
 }
 
-type provider interface {
+type repository interface {
 	CreatePullRequest(string, string, string, string, string, string, bool) error
-	GetPullRequests(string, string, bool) ([]p.PullRequest, error)
+	GetPullRequests(string, string, bool) ([]managementsystem.PullRequest, error)
 	DeclinePullRequest(string, string, int) error
 }
 
-type Func func(project project.Project, sourceControl vcs.SourceControl, provider provider, args map[string]string) error
+type Func func(project project.Project, sourceControl vcs.SourceControl, repository repository, args map[string]string) error

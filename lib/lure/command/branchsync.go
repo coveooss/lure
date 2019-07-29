@@ -10,7 +10,7 @@ import (
 	"github.com/coveooss/lure/lib/lure/log"
 )
 
-func SynchronizedBranchesCommand(project project.Project, sourceControl sourceControl, provider provider, args map[string]string) error {
+func SynchronizedBranchesCommand(project project.Project, sourceControl sourceControl, repository repository, args map[string]string) error {
 	fromBranch, ok := args["from"]
 	if !ok {
 		return errors.New("Missing argument 'from'")
@@ -20,10 +20,10 @@ func SynchronizedBranchesCommand(project project.Project, sourceControl sourceCo
 		return errors.New("Missing argument 'to'")
 	}
 
-	return synchronizedBranches(project, sourceControl, provider, fromBranch, toBranch)
+	return synchronizedBranches(project, sourceControl, repository, fromBranch, toBranch)
 }
 
-func synchronizedBranches(project project.Project, sourceControl sourceControl, provider provider, fromBranch string, toBranch string) error {
+func synchronizedBranches(project project.Project, sourceControl sourceControl, repository repository, fromBranch string, toBranch string) error {
 
 	// if git, setup a tracking branch to avoid having to prefix origin/ later
 	if _, err := sourceControl.Update(toBranch); err != nil {
@@ -58,7 +58,7 @@ func synchronizedBranches(project project.Project, sourceControl sourceControl, 
 			return err
 		}
 
-		if err := provider.CreatePullRequest(mergeBranch, toBranch, project.Owner, project.Name, fmt.Sprintf("Merge %s into %s", fromBranch, toBranch), "", *project.UseDefaultReviewers); err != nil {
+		if err := repository.CreatePullRequest(mergeBranch, toBranch, project.Owner, project.Name, fmt.Sprintf("Merge %s into %s", fromBranch, toBranch), "", *project.UseDefaultReviewers); err != nil {
 			return err
 		}
 	}

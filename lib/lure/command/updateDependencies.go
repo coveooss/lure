@@ -9,7 +9,7 @@ import (
 	"github.com/coveooss/lure/lib/lure"
 	"github.com/coveooss/lure/lib/lure/log"
 	"github.com/coveooss/lure/lib/lure/project"
-	p "github.com/coveooss/lure/lib/lure/provider"
+	"github.com/coveooss/lure/lib/lure/repositorymanagementsystem"
 	"github.com/coveooss/lure/lib/lure/versionManager"
 	"github.com/coveooss/lure/lib/lure/versionManager/mvn"
 	"github.com/coveooss/lure/lib/lure/versionManager/npm"
@@ -37,11 +37,11 @@ func appendIfMissing(modules []versionManager.ModuleVersion, modulesToAdd []vers
 	return modules
 }
 
-func CheckForUpdatesJobCommand(project project.Project, sourceControl sourceControl, provider provider, args map[string]string) error {
-	return checkForUpdatesJob(project, sourceControl, provider, args["commitMessage"])
+func CheckForUpdatesJobCommand(project project.Project, sourceControl sourceControl, repository repository, args map[string]string) error {
+	return checkForUpdatesJob(project, sourceControl, repository, args["commitMessage"])
 }
 
-func checkForUpdatesJob(project project.Project, sourceControl sourceControl, provider provider, commitMessage string) error {
+func checkForUpdatesJob(project project.Project, sourceControl sourceControl, repository repository, commitMessage string) error {
 	log.Logger.Infof("switching to default branch: %s", project.DefaultBranch)
 	if _, err := sourceControl.Update(project.DefaultBranch); err != nil {
 		return fmt.Errorf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err)
@@ -64,16 +64,16 @@ func checkForUpdatesJob(project project.Project, sourceControl sourceControl, pr
 	log.Logger.Infof("Modules to update : %q", modulesToUpdate)
 
 	ignoreDeclinedPRs := os.Getenv("IGNORE_DECLINED_PR") == "1"
-	pullRequests, err := provider.GetPullRequests(project.Owner, project.Name, ignoreDeclinedPRs)
+	pullRequests, err := repository.GetPullRequests(project.Owner, project.Name, ignoreDeclinedPRs)
 	if err != nil {
 		return err
 	}
 
 	for _, moduleToUpdate := range modulesToUpdate {
-		updateModule(moduleToUpdate, project, sourceControl, provider, pullRequests, commitMessage)
+		updateModule(moduleToUpdate, project, sourceControl, repository, pullRequests, commitMessage)
 	}
 
-	err = closeOldBranchesWithoutOpenPR(project, sourceControl, provider)
+	err = closeOldBranchesWithoutOpenPR(project, sourceControl, repository)
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func checkForUpdatesJob(project project.Project, sourceControl sourceControl, pr
 	return nil
 }
 
-func updateModule(moduleToUpdate versionManager.ModuleVersion, project project.Project, sourceControl sourceControl, provider provider, existingPRs []p.PullRequest, commitMessage string) {
+func updateModule(moduleToUpdate versionManager.ModuleVersion, project project.Project, sourceControl sourceControl, repository repository, existingPRs []repositorymanagementsystem.PullRequest, commitMessage string) {
 	var dependencyName string
 	if moduleToUpdate.Name != "" {
 		dependencyName = moduleToUpdate.Name
@@ -121,7 +121,7 @@ func updateModule(moduleToUpdate versionManager.ModuleVersion, project project.P
 				log.Logger.Infof("Running in DryRun mode. PR '%s' made for older version would be declined.", pr.Title)
 			} else {
 				log.Logger.Infof("Declining PR '%s' made for older version.", pr.Title)
-				provider.DeclinePullRequest(project.Owner, project.Name, pr.ID)
+				repository.DeclinePullRequest(project.Owner, project.Name, pr.ID)
 			}
 		}
 	}
@@ -171,11 +171,11 @@ func updateModule(moduleToUpdate versionManager.ModuleVersion, project project.P
 		log.Logger.Infof("Creating PR")
 
 		description := lure.Tprintf(commitMessage, map[string]interface{}{"module": moduleToUpdate.Module, "version": moduleToUpdate.Latest})
-		provider.CreatePullRequest(branch, project.DefaultBranch, project.Owner, project.Name, title, description, *project.UseDefaultReviewers)
+		repository.CreatePullRequest(branch, project.DefaultBranch, project.Owner, project.Name, title, description, *project.UseDefaultReviewers)
 	}
 }
 
-func closeOldBranchesWithoutOpenPR(project project.Project, sourceControl sourceControl, provider provider) error {
+func closeOldBranchesWithoutOpenPR(project project.Project, sourceControl sourceControl, repository repository) error {
 	log.Logger.Info("Cleaning up lure branches with no associated PRs.")
 
 	branchPrefix := project.BranchPrefix
@@ -183,7 +183,7 @@ func closeOldBranchesWithoutOpenPR(project project.Project, sourceControl source
 	if err != nil {
 		return err
 	}
-	existingPRs, err := provider.GetPullRequests(project.Owner, project.Name, false)
+	existingPRs, err := repository.GetPullRequests(project.Owner, project.Name, false)
 	if err != nil {
 		return err
 	}
@@ -207,7 +207,7 @@ func closeOldBranchesWithoutOpenPR(project project.Project, sourceControl source
 	return nil
 }
 
-func isBranchDead(branch string, existingPRs []p.PullRequest) bool {
+func isBranchDead(branch string, existingPRs []repositorymanagementsystem.PullRequest) bool {
 	for _, pr := range existingPRs {
 		if pr.State == "OPEN" && branch == pr.Source.Branch.Name {
 			return false

@@ -1,4 +1,4 @@
-package provider
+package repositorymanagementsystem
 
 type PullRequest struct {
 	ID                int    `json:"id"`

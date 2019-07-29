@@ -49,7 +49,7 @@ type SourceControl interface {
 	Branch(branchname string) (string, error)
 	Commit(message string) (string, error)
 	Push() (string, error)
-	GetActiveBranches() ([]string, error)
+	ActiveBranches() ([]string, error)
 	CloseBranch(branch string) error
 	Clone() error
 	SanitizeBranchName(branchName string) string

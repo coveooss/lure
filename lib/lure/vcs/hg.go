@@ -150,8 +150,8 @@ func (hgRepo HgRepo) CommitsBetween(baseRev string, secondRev string) ([]string,
 	return append(lines[:0], lines[:len(lines)-1]...), nil
 }
 
-// GetActiveBranches returns all currently active branches
-func (hgRepo HgRepo) GetActiveBranches() ([]string, error) {
+// ActiveBranches returns all currently active branches
+func (hgRepo HgRepo) ActiveBranches() ([]string, error) {
 	out, err := hgRepo.Cmd("branches", "--active", "--template", "{branch}\n")
 	if err != nil {
 		return nil, err

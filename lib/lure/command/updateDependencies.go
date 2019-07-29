@@ -179,7 +179,7 @@ func closeOldBranchesWithoutOpenPR(project project.Project, sourceControl source
 	log.Logger.Info("Cleaning up lure branches with no associated PRs.")
 
 	branchPrefix := project.BranchPrefix
-	branches, err := sourceControl.GetActiveBranches()
+	branches, err := sourceControl.ActiveBranches()
 	if err != nil {
 		return err
 	}

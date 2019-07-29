@@ -97,8 +97,8 @@ func (gitRepo GitRepo) CommitsBetween(baseRev string, secondRev string) ([]strin
 	return append(lines[:0], lines[:len(lines)-1]...), nil
 }
 
-// GetActiveBranches returns all currently active branches without origin/ prefix
-func (gitRepo GitRepo) GetActiveBranches() ([]string, error) {
+// ActiveBranches returns all currently active branches without origin/ prefix
+func (gitRepo GitRepo) ActiveBranches() ([]string, error) {
 	out, err := gitRepo.Cmd("branch", "-r")
 	if err != nil {
 		return nil, err

@@ -12,7 +12,7 @@ type sourceControl interface {
 	Branch(string) (string, error)
 	Push() (string, error)
 	WorkingPath() string
-	GetActiveBranches() ([]string, error)
+	ActiveBranches() ([]string, error)
 	CloseBranch(string) error
 	LocalPath() string
 	SanitizeBranchName(string) string

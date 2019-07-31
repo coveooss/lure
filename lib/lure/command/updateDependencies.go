@@ -97,8 +97,8 @@ func updateModule(moduleToUpdate versionManager.ModuleVersion, project project.P
 	if branchPrefix == "" {
 		branchPrefix = "lure-"
 	}
-	dependencyBranchPrefix := branchPrefix + dependencyName
-	dependencyBranchVersionPrefix := dependencyBranchPrefix + "-" + moduleToUpdate.Latest
+	dependencyBranchPrefix := sourceControl.SanitizeBranchName(branchPrefix + dependencyName)
+	dependencyBranchVersionPrefix := sourceControl.SanitizeBranchName(dependencyBranchPrefix + "-" + moduleToUpdate.Latest)
 	branchGUID, _ := guid.V4()
 	var branch = sourceControl.SanitizeBranchName(dependencyBranchVersionPrefix + "-" + branchGUID.String())
 

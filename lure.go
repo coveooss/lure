@@ -88,7 +88,7 @@ func runMain(config *project.LureConfig, auth vcs.Authentication) {
 		var sourceControl vcs.SourceControl
 		switch projectConfig.Vcs {
 		case vcs.Hg:
-			sourceControl, err = vcs.NewHg(auth, provider.URL, localDestination, projectConfig.GetDefaultBranch(), projectConfig.GetDefaultBranch(), projectConfig.GetBasePath())
+			sourceControl, err = vcs.NewHg(auth, provider.URL, localDestination, projectConfig.GetDefaultBranch(), projectConfig.GetTrashBranch(), projectConfig.GetBasePath())
 		case vcs.Git:
 			sourceControl, err = vcs.NewGit(auth, provider.URL, localDestination, projectConfig.GetBasePath())
 		default:

@@ -134,12 +134,6 @@ func updateModule(moduleToUpdate versionManager.ModuleVersion, project project.P
 		log.Logger.Fatalf("\"Could not switch to branch %s\" %s", project.DefaultBranch, err)
 	}
 
-	log.Logger.Infof("Creating branch %s", branch)
-	if _, err := sourceControl.Branch(branch); err != nil {
-		log.Logger.Errorf("\"Could not create branch\" %s", err)
-		return
-	}
-
 	hasChanges := false
 
 	switch moduleToUpdate.Type {
@@ -151,6 +145,12 @@ func updateModule(moduleToUpdate versionManager.ModuleVersion, project project.P
 
 	if hasChanges == false {
 		log.Logger.Warnf("An update was available for %s but Lure could not update it", moduleToUpdate.Name)
+		return
+	}
+
+	log.Logger.Infof("Creating branch %s", branch)
+	if _, err := sourceControl.Branch(branch); err != nil {
+		log.Logger.Errorf("\"Could not create branch\" %s", err)
 		return
 	}
 

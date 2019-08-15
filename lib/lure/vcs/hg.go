@@ -92,7 +92,7 @@ func (hgRepo HgRepo) Update(rev string) (string, error) {
 }
 
 func (hgRepo HgRepo) Branch(branchname string) (string, error) {
-	branch, err := hgRepo.Cmd("branch", hgRepo.SanitizeBranchName(branchname))
+	branch, err := hgRepo.SoftBranch(branchname)
 	if err != nil {
 		return "", err
 	}
@@ -103,6 +103,10 @@ func (hgRepo HgRepo) Branch(branchname string) (string, error) {
 	}
 
 	return branch, nil
+}
+
+func (hgRepo HgRepo) SoftBranch(branchname string) (string, error) {
+	return hgRepo.Cmd("branch", hgRepo.SanitizeBranchName(branchname))
 }
 
 func (hgRepo HgRepo) Commit(message string) (string, error) {

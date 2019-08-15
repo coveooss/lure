@@ -47,6 +47,7 @@ type SourceControl interface {
 	Cmd(args ...string) (string, error)
 	Update(rev string) (string, error)
 	Branch(branchname string) (string, error)
+	SoftBranch(branchname string) (string, error)
 	Commit(message string) (string, error)
 	Push() (string, error)
 	ActiveBranches() ([]string, error)

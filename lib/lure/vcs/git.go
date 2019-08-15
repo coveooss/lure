@@ -75,6 +75,10 @@ func (gitRepo GitRepo) Branch(branchname string) (string, error) {
 	return gitRepo.Cmd("checkout", "-b", gitRepo.SanitizeBranchName(branchname))
 }
 
+func (gitRepo GitRepo) SoftBranch(branchname string) (string, error) {
+	return gitRepo.Branch(branchname)
+}
+
 func (gitRepo GitRepo) Commit(message string) (string, error) {
 	add, err := gitRepo.Cmd("add", "--all")
 	if err != nil {

@@ -149,7 +149,7 @@ func updateModule(moduleToUpdate versionManager.ModuleVersion, project project.P
 	}
 
 	log.Logger.Infof("Creating branch %s", branch)
-	if _, err := sourceControl.Branch(branch); err != nil {
+	if _, err := sourceControl.SoftBranch(branch); err != nil {
 		log.Logger.Errorf("\"Could not create branch\" %s", err)
 		return
 	}

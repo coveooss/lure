@@ -144,7 +144,7 @@ func updateModule(moduleToUpdate versionManager.ModuleVersion, project project.P
 	}
 
 	if hasChanges == false {
-		log.Logger.Warnf("An update was available for %s but Lure could not update it", moduleToUpdate.Name)
+		log.Logger.Warnf("An update was available for %s but Lure could not update it", dependencyName)
 		return
 	}
 

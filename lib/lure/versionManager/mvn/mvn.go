@@ -166,6 +166,7 @@ func UpdateDependency(path string, moduleVersion versionManager.ModuleVersion) (
 	if moduleVersion.Name != "" {
 		//list all folder with pom.xml
 		cmd := exec.Command("mvn", "test-compile", "compile", "-B", "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
+
 		var out bytes.Buffer
 		var stderr bytes.Buffer
 		cmd.Stdout = &out
@@ -238,6 +239,7 @@ func UpdateDependency(path string, moduleVersion versionManager.ModuleVersion) (
 	} else {
 		var autoUpdateResult string
 		autoUpdateResult, err = osUtils.Execute(path, "mvn", "test-compile", "compile", "-B", "org.codehaus.mojo:versions-maven-plugin:2.4:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
+
 		if strings.Contains(autoUpdateResult, fmt.Sprintf("Updated %s:jar:%s to version %s", dependency, moduleVersion.Current, version)) == true {
 			hasUpdate = true
 		}

@@ -27,9 +27,9 @@ func MvnOutdated(path string) (error, []versionManager.ModuleVersion) {
 
 	var cmd *exec.Cmd
 	if fileExists("Rules.xml") {
-		cmd = exec.Command("mvn", "test-compile", "-B", "versions:display-dependency-updates", "-DprocessDependencyManagement=false", "-Dmaven.version.rules=file:Rules.xml")
+		cmd = exec.Command("mvn", "test-compile", "compile", "-B", "versions:display-dependency-updates", "-DprocessDependencyManagement=false", "-Dmaven.version.rules=file:Rules.xml")
 	} else {
-		cmd = exec.Command("mvn", "test-compile", "-B", "versions:display-dependency-updates", "-DprocessDependencyManagement=false")
+		cmd = exec.Command("mvn", "test-compile", "compile", "-B", "versions:display-dependency-updates", "-DprocessDependencyManagement=false")
 	}
 	var out bytes.Buffer
 	var stderr bytes.Buffer
@@ -86,7 +86,7 @@ func MvnOutdated(path string) (error, []versionManager.ModuleVersion) {
 func getModulePropertyMap(path string) map[string]string {
 	var moduleProperties map[string]string = make(map[string]string)
 
-	cmd := exec.Command("mvn", "test-compile", "-B", "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
+	cmd := exec.Command("mvn", "test-compile", "compile", "-B", "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
 	var out bytes.Buffer
 	var stree bytes.Buffer
 	cmd.Stdout = &out
@@ -165,7 +165,8 @@ func UpdateDependency(path string, moduleVersion versionManager.ModuleVersion) (
 
 	if moduleVersion.Name != "" {
 		//list all folder with pom.xml
-		cmd := exec.Command("mvn", "test-compile", "-B", "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
+		cmd := exec.Command("mvn", "test-compile", "compile", "-B", "-q", "--also-make", "exec:exec", "-Dexec.executable=pwd")
+
 		var out bytes.Buffer
 		var stderr bytes.Buffer
 		cmd.Stdout = &out
@@ -237,7 +238,8 @@ func UpdateDependency(path string, moduleVersion versionManager.ModuleVersion) (
 		}
 	} else {
 		var autoUpdateResult string
-		autoUpdateResult, err = osUtils.Execute(path, "mvn", "test-compile", "-B", "org.codehaus.mojo:versions-maven-plugin:2.4:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
+		autoUpdateResult, err = osUtils.Execute(path, "mvn", "test-compile", "compile", "-B", "org.codehaus.mojo:versions-maven-plugin:2.4:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
+
 		if strings.Contains(autoUpdateResult, fmt.Sprintf("Updated %s:jar:%s to version %s", dependency, moduleVersion.Current, version)) == true {
 			hasUpdate = true
 		}

@@ -106,14 +106,6 @@ In your bitbucket app, set the callback url to `http://localhost:9090/callback`
 
 ### Project setup
 
-```sh
-go get github.com/coveooss/lure/
-cd $GOPATH/src/github.com/coveooss/lure
-# or $HOME/go/src/coveooss/lure if you don't have a $GOPATH set up which is perfectly fine
-go get ./...
-go run lure.go
-```
-
 Build:
 
 ```sh

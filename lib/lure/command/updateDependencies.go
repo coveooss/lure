@@ -100,12 +100,13 @@ func updateModule(moduleToUpdate versionManager.ModuleVersion, project project.P
 	dependencyBranchPrefix := sourceControl.SanitizeBranchName(branchPrefix + dependencyName)
 	dependencyBranchVersionPrefix := sourceControl.SanitizeBranchName(dependencyBranchPrefix + "-" + moduleToUpdate.Latest)
 	branchGUID, _ := guid.V4()
+	GUIDlen := len(branchGUID.String())
 	var branch = sourceControl.SanitizeBranchName(dependencyBranchVersionPrefix + "-" + branchGUID.String())
 
 	var openPRAlreadyExists = false
 	var declinedPRAlreadyExists = false
 	for _, pr := range existingPRs {
-		if !openPRAlreadyExists && strings.HasPrefix(pr.Source.Branch.Name, dependencyBranchVersionPrefix) {
+		if !openPRAlreadyExists && strings.HasPrefix(pr.Source.Branch.Name, dependencyBranchPrefix) && pr.Source.Branch.Name[:len(pr.Source.Branch.Name)-GUIDlen] == dependencyBranchVersionPrefix {
 			if pr.State == "OPEN" {
 				log.Logger.Infof("There already is an open PR for: '%s'. The branch name is: %s.", title, pr.Source.Branch.Name)
 				openPRAlreadyExists = true

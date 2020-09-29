@@ -42,7 +42,30 @@ type dest struct {
 }
 
 type user struct {
-	Uuid string `json:"uuid"`
+	Uuid        string `json:"uuid"`
+	DisplayName string `json:"display_name"`
+}
+
+type reviewerError struct {
+	Reviewer string
+}
+
+func (e *reviewerError) Error() string {
+	return fmt.Sprintf("Could not add reviewer: %s", e.Reviewer)
+}
+
+type bitbucketErrorFieldJSON struct {
+	Reviewers []string `json:"reviewers"`
+	Message   string   `json:"message"`
+}
+
+type bitbucketErrorJSON struct {
+	Fields bitbucketErrorFieldJSON `json:"fields"`
+}
+
+type bitbucketErrorWrapperJSON struct {
+	Type  string             `json:"type"`
+	Error bitbucketErrorJSON `json:"error"`
 }
 
 func New(authentication vcs.Authentication, project project.Project) BitBucket {
@@ -147,12 +170,36 @@ func (bitbucket BitBucket) getPRRequest(prRequest *http.Request) (*pullRequestLi
 	return &prList, nil
 }
 
+// CreatePullRequest creates a pull request via the bitbucket API
 func (bitbucket BitBucket) CreatePullRequest(sourceBranch string, destBranch string, owner string, repo string, title string, description string, useDefaultReviewers bool) error {
 	reviewers := []user{}
 	if useDefaultReviewers {
 		reviewers, _ = bitbucket.getDefaultReviewers(owner, repo)
 	}
 
+	err := bitbucket.createPullRequest(sourceBranch, destBranch, owner, repo, title, description, reviewers)
+	if err != nil {
+		reviewerError, ok := err.(*reviewerError)
+		if ok {
+			//remove reviewer
+			for i, v := range reviewers {
+				if v.DisplayName == reviewerError.Reviewer {
+					reviewers = append(reviewers[:i], reviewers[i+1:]...)
+					break
+				}
+			}
+			err = bitbucket.createPullRequest(sourceBranch, destBranch, owner, repo, title, description, reviewers)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return err
+
+}
+
+func (bitbucket BitBucket) createPullRequest(sourceBranch string, destBranch string, owner string, repo string, title string, description string, reviewers []user) error {
 	pr := PullRequest{
 		Title:       title,
 		Description: description,
@@ -175,7 +222,7 @@ func (bitbucket BitBucket) CreatePullRequest(sourceBranch string, destBranch str
 
 	prRequest, err := bitbucket.createApiRequest("POST", fmt.Sprintf("/%s/%s/pullrequests/", owner, repo), buf)
 	if err != nil {
-		log.Logger.Error("Could not create a pull request")
+		log.Logger.Error("Could not create a pull request request")
 		return err
 	}
 
@@ -187,11 +234,30 @@ func (bitbucket BitBucket) CreatePullRequest(sourceBranch string, destBranch str
 	resp, err := client.Do(prRequest)
 
 	if err != nil {
-		log.Logger.Error("Error getting PR Requests", client.LogString())
+		log.Logger.Error("Error creating PR Requests", client.LogString())
 		return err
 	}
-
 	defer resp.Body.Close()
+
+	if resp.StatusCode == 400 {
+		log.Logger.Warn("Error creating PR Rquest")
+		if resp.ContentLength == -1 {
+			return errors.New("No response")
+		}
+		bodyBuff := make([]byte, resp.ContentLength)
+		resp.Body.Read(bodyBuff)
+		body := string(bodyBuff)
+
+		reviewerErrorTemplate := []string{"is the author and cannot be included as a reviewer.", "does not have access to view this pull request"}
+		//Fix the case when the creator of the PR is also part of the default reviewers
+		if stringContainsAny(body, reviewerErrorTemplate) {
+			var bitbucketError bitbucketErrorWrapperJSON
+			json.Unmarshal(bodyBuff, &bitbucketError)
+			if len(bitbucketError.Error.Fields.Reviewers) != 0 {
+				return &reviewerError{Reviewer: stringsTrimAllSuffixes(bitbucketError.Error.Fields.Reviewers[0], reviewerErrorTemplate)}
+			}
+		}
+	}
 
 	io.Copy(os.Stdout, resp.Body)
 
@@ -246,4 +312,22 @@ func getHTTPClient() *pester.Client {
 	client.RetryOnHTTP429 = true
 	client.KeepLog = true
 	return client
+}
+
+func stringContainsAny(s string, substrings []string) bool {
+	for _, substring := range substrings {
+		if strings.Contains(s, substring) {
+			return true
+		}
+	}
+	return false
+}
+
+func stringsTrimAllSuffixes(orig string, substrings []string) string {
+	trimmedString := orig
+	for _, substring := range substrings {
+		trimmedString = strings.TrimSuffix(trimmedString, substring)
+	}
+
+	return strings.TrimSpace(trimmedString)
 }

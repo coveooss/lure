@@ -38,10 +38,10 @@ func appendIfMissing(modules []versionManager.ModuleVersion, modulesToAdd []vers
 }
 
 func CheckForUpdatesJobCommand(project project.Project, sourceControl sourceControl, repository repository, args map[string]string) error {
-	return checkForUpdatesJob(project, sourceControl, repository, args["commitMessage"])
+	return checkForUpdatesJob(project, sourceControl, repository, args["commitMessage"], args["pullRequestDescription"])
 }
 
-func checkForUpdatesJob(project project.Project, sourceControl sourceControl, repository repository, commitMessage string) error {
+func checkForUpdatesJob(project project.Project, sourceControl sourceControl, repository repository, commitMessage string, description string) error {
 	log.Logger.Infof("switching to default branch: %s", project.DefaultBranch)
 	if _, err := sourceControl.Update(project.DefaultBranch); err != nil {
 		return fmt.Errorf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err)
@@ -70,7 +70,7 @@ func checkForUpdatesJob(project project.Project, sourceControl sourceControl, re
 	}
 
 	for _, moduleToUpdate := range modulesToUpdate {
-		updateModule(moduleToUpdate, project, sourceControl, repository, pullRequests, commitMessage)
+		updateModule(moduleToUpdate, project, sourceControl, repository, pullRequests, commitMessage, description)
 	}
 
 	err = closeOldBranchesWithoutOpenPR(project, sourceControl, repository)
@@ -83,7 +83,7 @@ func checkForUpdatesJob(project project.Project, sourceControl sourceControl, re
 	return nil
 }
 
-func updateModule(moduleToUpdate versionManager.ModuleVersion, project project.Project, sourceControl sourceControl, repository repository, existingPRs []repositorymanagementsystem.PullRequest, commitMessage string) {
+func updateModule(moduleToUpdate versionManager.ModuleVersion, project project.Project, sourceControl sourceControl, repository repository, existingPRs []repositorymanagementsystem.PullRequest, commitMessage string, description string) {
 	var dependencyName string
 	if moduleToUpdate.Name != "" {
 		dependencyName = moduleToUpdate.Name
@@ -170,7 +170,7 @@ func updateModule(moduleToUpdate versionManager.ModuleVersion, project project.P
 
 		log.Logger.Infof("Creating PR")
 
-		description := lure.Tprintf(commitMessage, map[string]interface{}{"module": moduleToUpdate.Module, "version": moduleToUpdate.Latest})
+		description := lure.Tprintf(description, map[string]interface{}{"module": moduleToUpdate.Module, "version": moduleToUpdate.Latest})
 		repository.CreatePullRequest(branch, project.DefaultBranch, project.Owner, project.Name, title, description, *project.UseDefaultReviewers)
 	}
 }

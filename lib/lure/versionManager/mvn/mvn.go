@@ -18,11 +18,13 @@ import (
 	"launchpad.net/xmlpath"
 )
 
-func MvnOutdated(path string) (error, []versionManager.ModuleVersion) {
+type Mvn struct{}
+
+func (mvn *Mvn) GetOutdated(path string) ([]versionManager.ModuleVersion, error) {
 	const pomDefaultFileName = "pom.xml"
 	if !fileExists(path + pomDefaultFileName) {
 		log.Logger.Info(pomDefaultFileName + " doesn't exist, skipping mvn update")
-		return nil, make([]versionManager.ModuleVersion, 0, 0)
+		return make([]versionManager.ModuleVersion, 0, 0), nil
 	}
 
 	var cmd *exec.Cmd
@@ -43,7 +45,7 @@ func MvnOutdated(path string) (error, []versionManager.ModuleVersion) {
 		log.Logger.Error(out.String())
 		log.Logger.Error(stderr.String())
 		log.Logger.Error(err)
-		return err, make([]versionManager.ModuleVersion, 0, 0)
+		return make([]versionManager.ModuleVersion, 0, 0), nil
 	}
 
 	reader := bytes.NewReader(out.Bytes())
@@ -68,19 +70,20 @@ func MvnOutdated(path string) (error, []versionManager.ModuleVersion) {
 
 			log.Logger.Tracef(">%q - %q\n", packageName, packageVersion)
 			mv := versionManager.ModuleVersion{
-				Type:    "maven",
-				Module:  lastPackage[1] + ":" + lastPackage[2],
-				Current: packageVersion[1],
-				Wanted:  packageVersion[2],
-				Latest:  packageVersion[2],
-				Name:    modulePropertyMap[lastPackage[1]+":"+lastPackage[2]],
+				Type:          "maven",
+				Module:        lastPackage[1] + ":" + lastPackage[2],
+				Current:       packageVersion[1],
+				Wanted:        packageVersion[2],
+				Latest:        packageVersion[2],
+				Name:          modulePropertyMap[lastPackage[1]+":"+lastPackage[2]],
+				ModuleUpdater: mvn,
 			}
 			log.Logger.Trace(mv)
 			version = append(version, mv)
 		}
 	}
 
-	return nil, version
+	return version, nil
 }
 
 func getModulePropertyMap(path string) map[string]string {
@@ -156,7 +159,7 @@ type Property struct {
 type property struct {
 }
 
-func UpdateDependency(path string, moduleVersion versionManager.ModuleVersion) (bool, error) { //dependency string, version string)
+func (mvn *Mvn) UpdateDependency(path string, moduleVersion versionManager.ModuleVersion) (bool, error) { //dependency string, version string)
 	dependency := moduleVersion.Module
 	version := moduleVersion.Latest
 

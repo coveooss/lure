@@ -11,11 +11,13 @@ import (
 	"github.com/coveooss/lure/lib/lure/project"
 	"github.com/coveooss/lure/lib/lure/repositorymanagementsystem"
 	"github.com/coveooss/lure/lib/lure/versionManager"
-	"github.com/coveooss/lure/lib/lure/versionManager/mvn"
-	"github.com/coveooss/lure/lib/lure/versionManager/npm"
 
 	"github.com/vsekhar/govtil/guid"
 )
+
+type outdatedGetter interface {
+	GetOutdated(path string) ([]versionManager.ModuleVersion, error)
+}
 
 // This part interesting
 // https://github.com/golang/go/blob/1441f76938bf61a2c8c2ed1a65082ddde0319633/src/cmd/go/vcs.go
@@ -37,11 +39,11 @@ func appendIfMissing(modules []versionManager.ModuleVersion, modulesToAdd []vers
 	return modules
 }
 
-func CheckForUpdatesJobCommand(project project.Project, sourceControl sourceControl, repository repository, args map[string]string) error {
-	return checkForUpdatesJob(project, sourceControl, repository, args["commitMessage"], args["pullRequestDescription"])
+func CheckForUpdatesJobCommand(project project.Project, sourceControl sourceControl, repository repository, args map[string]string, mvn outdatedGetter, npm outdatedGetter) error {
+	return checkForUpdatesJob(project, sourceControl, repository, args["commitMessage"], args["pullRequestDescription"], mvn, npm)
 }
 
-func checkForUpdatesJob(project project.Project, sourceControl sourceControl, repository repository, commitMessage string, description string) error {
+func checkForUpdatesJob(project project.Project, sourceControl sourceControl, repository repository, commitMessage string, description string, mvn outdatedGetter, npm outdatedGetter) error {
 	log.Logger.Infof("switching to default branch: %s", project.DefaultBranch)
 	if _, err := sourceControl.Update(project.DefaultBranch); err != nil {
 		return fmt.Errorf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err)
@@ -50,11 +52,15 @@ func checkForUpdatesJob(project project.Project, sourceControl sourceControl, re
 	modulesToUpdate := make([]versionManager.ModuleVersion, 0, 0)
 
 	if project.SkipPackageManager == nil || project.SkipPackageManager["npm"] != true {
-		modulesToUpdate = appendIfMissing(modulesToUpdate, npm.NpmOutdated(sourceControl.WorkingPath()))
+		outdatedModule, err := npm.GetOutdated(sourceControl.WorkingPath())
+		if err != nil {
+			return err
+		}
+		modulesToUpdate = appendIfMissing(modulesToUpdate, outdatedModule)
 	}
 
 	if project.SkipPackageManager == nil || project.SkipPackageManager["mvn"] != true {
-		err, modulesToAdd := mvn.MvnOutdated(sourceControl.WorkingPath())
+		modulesToAdd, err := mvn.GetOutdated(sourceControl.WorkingPath())
 		if err != nil {
 			return err
 		}
@@ -100,24 +106,28 @@ func updateModule(moduleToUpdate versionManager.ModuleVersion, project project.P
 	dependencyBranchPrefix := sourceControl.SanitizeBranchName(branchPrefix + dependencyName)
 	dependencyBranchVersionPrefix := sourceControl.SanitizeBranchName(dependencyBranchPrefix + "-" + moduleToUpdate.Latest)
 	branchGUID, _ := guid.V4()
-	GUIDlen := len(branchGUID.String())
+	suffixGUIDlen := len(branchGUID.String()) + 1
 	var branch = sourceControl.SanitizeBranchName(dependencyBranchVersionPrefix + "-" + branchGUID.String())
 
 	var openPRAlreadyExists = false
 	var declinedPRAlreadyExists = false
 	for _, pr := range existingPRs {
-		if !openPRAlreadyExists && strings.HasPrefix(pr.Source.Branch.Name, dependencyBranchPrefix) && pr.Source.Branch.Name[:len(pr.Source.Branch.Name)-GUIDlen] == dependencyBranchVersionPrefix {
-			if pr.State == "OPEN" {
-				log.Logger.Infof("There already is an open PR for: '%s'. The branch name is: %s.", title, pr.Source.Branch.Name)
-				openPRAlreadyExists = true
-			} else {
-				log.Logger.Infof("There was a declined PR for: '%s'. The branch name is: %s.", title, pr.Source.Branch.Name)
-				declinedPRAlreadyExists = true
+		if !openPRAlreadyExists && strings.HasPrefix(pr.Source.GetName(), dependencyBranchPrefix) {
+			previouslyOpennedPrName := pr.Source.GetName()[:(len(pr.Source.GetName()) - suffixGUIDlen)]
+			hasPRForSpecificVersionOpen := previouslyOpennedPrName == dependencyBranchVersionPrefix
+			if hasPRForSpecificVersionOpen {
+				if pr.State == "OPEN" {
+					log.Logger.Infof("There already is an open PR for: '%s'. The branch name is: %s.", title, pr.Source.GetName())
+					openPRAlreadyExists = true
+				} else {
+					log.Logger.Infof("There was a declined PR for: '%s'. The branch name is: %s.", title, pr.Source.GetName())
+					declinedPRAlreadyExists = true
+				}
+				continue
 			}
-			continue
 		}
 
-		if pr.State == "OPEN" && strings.HasPrefix(pr.Source.Branch.Name, dependencyBranchPrefix) {
+		if pr.State == "OPEN" && strings.HasPrefix(pr.Source.GetName(), dependencyBranchPrefix) {
 			if os.Getenv("DRY_RUN") == "1" {
 				log.Logger.Infof("Running in DryRun mode. PR '%s' made for older version would be declined.", pr.Title)
 			} else {
@@ -135,14 +145,7 @@ func updateModule(moduleToUpdate versionManager.ModuleVersion, project project.P
 		log.Logger.Fatalf("\"Could not switch to branch %s\" %s", project.DefaultBranch, err)
 	}
 
-	hasChanges := false
-
-	switch moduleToUpdate.Type {
-	case "maven":
-		hasChanges, _ = mvn.UpdateDependency(sourceControl.WorkingPath(), moduleToUpdate)
-	case "npm":
-		hasChanges, _ = npm.UpdateDependency(sourceControl.WorkingPath(), moduleToUpdate)
-	}
+	hasChanges, _ := moduleToUpdate.ModuleUpdater.UpdateDependency(sourceControl.WorkingPath(), moduleToUpdate)
 
 	if hasChanges == false {
 		log.Logger.Warnf("An update was available for %s but Lure could not update it", dependencyName)
@@ -210,7 +213,7 @@ func closeOldBranchesWithoutOpenPR(project project.Project, sourceControl source
 
 func isBranchDead(branch string, existingPRs []repositorymanagementsystem.PullRequest) bool {
 	for _, pr := range existingPRs {
-		if pr.State == "OPEN" && branch == pr.Source.Branch.Name {
+		if pr.State == "OPEN" && branch == pr.Source.GetName() {
 			return false
 		}
 	}

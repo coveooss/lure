@@ -9,6 +9,9 @@ import (
 	"os/exec"
 	"runtime"
 
+	"github.com/coveooss/lure/lib/lure/versionManager/mvn"
+	"github.com/coveooss/lure/lib/lure/versionManager/npm"
+
 	"github.com/coveooss/lure/lib/lure/command"
 	"github.com/coveooss/lure/lib/lure/log"
 	"github.com/coveooss/lure/lib/lure/project"
@@ -98,12 +101,15 @@ func runMain(config *project.LureConfig, auth vcs.Authentication) {
 
 		sourceControl.Clone()
 
+		npm := npm.Npm{}
+		mvn := mvn.Mvn{}
+
 		for _, cmd := range projectConfig.Commands {
 			log.Logger.Info(fmt.Sprintf("Command: %s", cmd.Name))
 			var err error
 			switch cmd.Name {
 			case "updateDependencies":
-				err = command.CheckForUpdatesJobCommand(projectConfig, sourceControl, provider, cmd.Args)
+				err = command.CheckForUpdatesJobCommand(projectConfig, sourceControl, provider, cmd.Args, &mvn, &npm)
 			case "synchronizedBranches":
 				err = command.SynchronizedBranchesCommand(projectConfig, sourceControl, provider, cmd.Args)
 			default:

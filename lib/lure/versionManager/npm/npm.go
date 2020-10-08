@@ -16,11 +16,14 @@ import (
 
 type packageJSON map[string]interface{}
 
-func NpmOutdated(path string) []versionManager.ModuleVersion {
+type Npm struct {
+}
+
+func (npm *Npm) GetOutdated(path string) ([]versionManager.ModuleVersion, error) {
 	const packageJSONDefaultFileName = "package.json"
 	if _, err := os.Stat(path + packageJSONDefaultFileName); os.IsNotExist(err) {
 		log.Logger.Infof(packageJSONDefaultFileName + " doesn't exist, skipping npm update")
-		return make([]versionManager.ModuleVersion, 0, 0)
+		return make([]versionManager.ModuleVersion, 0, 0), err
 	}
 
 	log.Logger.Infof("Running npm install")
@@ -29,7 +32,7 @@ func NpmOutdated(path string) []versionManager.ModuleVersion {
 	err := cmd.Run()
 	if err != nil {
 		log.Logger.Errorf("Could not npm install: '%s'\n", err)
-		return make([]versionManager.ModuleVersion, 0, 0)
+		return make([]versionManager.ModuleVersion, 0, 0), err
 	}
 
 	cmd = exec.Command("npm", "outdated")
@@ -52,11 +55,12 @@ func NpmOutdated(path string) []versionManager.ModuleVersion {
 		if lineIndex != 0 {
 			result := npmRegex.FindStringSubmatch(scanner.Text())
 			mv := versionManager.ModuleVersion{
-				Type:    "npm",
-				Module:  result[1],
-				Wanted:  result[3],
-				Current: result[2],
-				Latest:  result[4],
+				Type:          "npm",
+				Module:        result[1],
+				Wanted:        result[3],
+				Current:       result[2],
+				Latest:        result[4],
+				ModuleUpdater: npm,
 			}
 			wantedVersion, _ := semver.Parse(mv.Wanted)
 			latestVersion, _ := semver.Parse(mv.Latest)
@@ -69,10 +73,10 @@ func NpmOutdated(path string) []versionManager.ModuleVersion {
 		lineIndex++
 	}
 
-	return version
+	return version, nil
 }
 
-func UpdateDependency(dir string, moduleToUpdate versionManager.ModuleVersion) (bool, error) {
+func (npm *Npm) UpdateDependency(dir string, moduleToUpdate versionManager.ModuleVersion) (bool, error) {
 	module := moduleToUpdate.Module
 	version := moduleToUpdate.Latest
 	packageJSONBuffer, _ := ioutil.ReadFile(dir + "/package.json")

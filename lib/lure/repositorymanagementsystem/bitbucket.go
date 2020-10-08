@@ -26,7 +26,7 @@ type BitBucket struct {
 
 type pullRequestList struct {
 	Next        string        `json:"next"`
-	PullRequest []PullRequest `json:"values"`
+	PullRequest []pullRequest `json:"values"`
 }
 
 type branch struct {
@@ -37,12 +37,31 @@ type source struct {
 	Branch branch `json:"branch"`
 }
 
+func (s *source) GetName() string {
+	return s.Branch.Name
+}
+
 type dest struct {
 	Branch branch `json:"branch"`
 }
 
+func (s *dest) GetName() string {
+	return s.Branch.Name
+}
+
 type user struct {
 	Uuid string `json:"uuid"`
+}
+
+type pullRequest struct {
+	ID                int    `json:"id"`
+	Title             string `json:"title"`
+	Description       string `json:"description"`
+	Source            source `json:"source"`
+	Dest              source `json:"destination"`
+	CloseSourceBranch bool   `json:"close_source_branch"`
+	State             string `json:"state"`
+	Reviewers         []user `json:"reviewers"`
 }
 
 func New(authentication vcs.Authentication, project project.Project) BitBucket {
@@ -98,7 +117,21 @@ func (bitbucket BitBucket) GetPullRequests(username string, repoSlug string, ign
 	}
 	log.Logger.Infof("Found %d PRs.", len(list.PullRequest))
 
-	return list.PullRequest, nil
+	pullRequests := []PullRequest{}
+	for _, bitBucketPr := range list.PullRequest {
+		pullRequests = append(pullRequests, PullRequest{
+			ID:                bitBucketPr.ID,
+			Title:             bitBucketPr.Title,
+			Description:       bitBucketPr.Description,
+			Source:            &bitBucketPr.Source,
+			Dest:              &bitBucketPr.Dest,
+			CloseSourceBranch: bitBucketPr.CloseSourceBranch,
+			State:             bitBucketPr.State,
+			Reviewers:         bitBucketPr.Reviewers,
+		})
+	}
+
+	return pullRequests, nil
 }
 
 func (bitbucket BitBucket) getDefaultReviewers(username string, repoSlug string) ([]user, error) {
@@ -156,12 +189,12 @@ func (bitbucket BitBucket) CreatePullRequest(sourceBranch string, destBranch str
 	pr := PullRequest{
 		Title:       title,
 		Description: description,
-		Source: source{
+		Source: &source{
 			Branch: branch{
 				Name: sourceBranch,
 			},
 		},
-		Dest: dest{
+		Dest: &dest{
 			Branch: branch{
 				Name: destBranch,
 			},

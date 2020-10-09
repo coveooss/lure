@@ -70,11 +70,14 @@ func (d *dummyRepository) DeclinePullRequest(string, string, int) error {
 }
 
 type dummyVersionControl struct {
-	ModuleToReturn []versionManager.ModuleVersion
+	ModuleToReturn       []versionManager.ModuleVersion
+	GetOutdatedError     error
+	GetOutdatedWasCalled bool
 }
 
 func (d *dummyVersionControl) GetOutdated(path string) ([]versionManager.ModuleVersion, error) {
-	return d.ModuleToReturn, nil
+	d.GetOutdatedWasCalled = true
+	return d.ModuleToReturn, d.GetOutdatedError
 }
 
 func (d *dummyVersionControl) UpdateDependency(path string, moduleVersion versionManager.ModuleVersion) (bool, error) {
@@ -238,6 +241,26 @@ func TestCheckForUpdatesJobCommandShouldOpenAPRWhenNoPRWasOpenedForThis(t *testi
 
 	if !repository.OpenPullRequestCalled {
 		t.Log("Should have opened a pull request with the latest version")
+		t.Fail()
+	}
+}
+
+func TestNpmFailureShouldNotPreventMvnUpdate(t *testing.T) {
+
+	skipPackageManageConfiguration := make(map[string]bool)
+	skipPackageManageConfiguration["mvn"] = false
+	skipPackageManageConfiguration["npm"] = false
+
+	npm := &dummyVersionControl{}
+	mvn := &dummyVersionControl{}
+
+	repository := &dummyRepository{}
+
+	useDefaultReviewers := false
+	command.CheckForUpdatesJobCommand(project.Project{SkipPackageManager: skipPackageManageConfiguration, UseDefaultReviewers: &useDefaultReviewers}, &dummySourceControl{}, repository, make(map[string]string), mvn, npm)
+
+	if !mvn.GetOutdatedWasCalled {
+		t.Log("Should have called GetOutdated for Mvn")
 		t.Fail()
 	}
 }

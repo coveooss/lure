@@ -51,20 +51,36 @@ func checkForUpdatesJob(project project.Project, sourceControl sourceControl, re
 
 	modulesToUpdate := make([]versionManager.ModuleVersion, 0, 0)
 
+	var npmError error
 	if project.SkipPackageManager == nil || project.SkipPackageManager["npm"] != true {
-		outdatedModule, err := npm.GetOutdated(sourceControl.WorkingPath())
-		if err != nil {
-			return err
+		var outdatedModule []versionManager.ModuleVersion
+		outdatedModule, npmError = npm.GetOutdated(sourceControl.WorkingPath())
+
+		if npmError != nil {
+			log.Logger.Warn("Npm could not get the Outdated dependency, but wasn't configured to be skipped")
 		}
+
 		modulesToUpdate = appendIfMissing(modulesToUpdate, outdatedModule)
 	}
 
+	var mvnError error
 	if project.SkipPackageManager == nil || project.SkipPackageManager["mvn"] != true {
-		modulesToAdd, err := mvn.GetOutdated(sourceControl.WorkingPath())
-		if err != nil {
-			return err
+		var outdatedModule []versionManager.ModuleVersion
+		outdatedModule, mvnError = mvn.GetOutdated(sourceControl.WorkingPath())
+
+		if mvnError != nil {
+			log.Logger.Warn("Mvn could not get the Outdated dependency, but wasn't configured to be skipped")
 		}
-		modulesToUpdate = appendIfMissing(modulesToUpdate, modulesToAdd)
+
+		modulesToUpdate = appendIfMissing(modulesToUpdate, outdatedModule)
+	}
+
+	if npmError != nil && mvnError != nil {
+		if npmError != nil {
+			return npmError
+		} else if mvnError != nil {
+			return mvnError
+		}
 	}
 
 	log.Logger.Infof("Modules to update : %q", modulesToUpdate)

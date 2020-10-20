@@ -1,0 +1,25 @@
+# Build customization
+builds:
+  - binary: lure
+    goos:
+      - windows
+      - darwin
+      - linux
+    goarch:
+      - amd64
+
+# Archive customization
+archives:
+  - format: zip
+
+    replacements:
+      amd64: 64-bits
+      darwin: macOS
+
+    files:
+      - nothing.*
+
+# GitHub release customization
+release:
+  draft: true
+  prerelease: true

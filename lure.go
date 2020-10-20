@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path"
 	"runtime"
 
 	"github.com/coveooss/lure/lib/lure/versionManager/mvn"
@@ -84,7 +85,7 @@ func runMain(config *project.LureConfig, auth vcs.Authentication) {
 		if err != nil {
 			log.Logger.Fatalf("\"Could not generate guid\" %s", err)
 		}
-		localDestination := os.TempDir() + repoGUID.String()
+		localDestination := path.Join(os.TempDir(), repoGUID.String())
 
 		var provider command.Repository
 		switch projectConfig.Host {

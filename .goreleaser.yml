@@ -10,10 +10,15 @@ builds:
 
 # Archive customization
 archives:
-  - format: zip
+  - format: binary
+
+    format_overrides:
+      - goos: windows
+        format: zip
+
+    name_template: "{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}"
 
     replacements:
-      amd64: 64-bits
       darwin: macOS
 
     files:

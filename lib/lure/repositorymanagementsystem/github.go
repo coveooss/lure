@@ -37,8 +37,8 @@ func (gh GitHub) CreatePullRequest(sourceBranch string, destBranch string, owner
 
 	newPR := github.NewPullRequest{
 		Title:               &title,
-		Head:                &destBranch,
-		Base:                &sourceBranch,
+		Head:                &sourceBranch,
+		Base:                &destBranch,
 		Body:                &description,
 	}
 
@@ -46,6 +46,7 @@ func (gh GitHub) CreatePullRequest(sourceBranch string, destBranch string, owner
 
 	if err != nil {
 		log.Logger.Error("Error creating GitHub Pull Request")
+		log.Logger.Error(err)
 		return err
 	}
 
@@ -67,6 +68,7 @@ func (gh GitHub) GetPullRequests(username string, repoSlug string, ignoreDecline
 
 	if err != nil {
 		log.Logger.Error("Error listing GitHub Pull Requests")
+		log.Logger.Error(err)
 		return nil, err
 	}
 
@@ -77,6 +79,7 @@ func (gh GitHub) GetPullRequests(username string, repoSlug string, ignoreDecline
 
 		if err != nil {
 			log.Logger.Error("Error getting GitHub Pull Request")
+			log.Logger.Error(err)
 			return nil, err
 		}
 
@@ -119,6 +122,7 @@ func (gh GitHub) DeclinePullRequest(username string, repoSlug string, pullReques
 
 	if err != nil {
 		log.Logger.Error("Error editing GitHub Pull Request")
+		log.Logger.Error(err)
 		return nil
 	}
 

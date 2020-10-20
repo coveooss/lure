@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"regexp"
 
 	"github.com/blang/semver"
@@ -79,7 +80,7 @@ func (npm *Npm) GetOutdated(path string) ([]versionManager.ModuleVersion, error)
 func (npm *Npm) UpdateDependency(dir string, moduleToUpdate versionManager.ModuleVersion) (bool, error) {
 	module := moduleToUpdate.Module
 	version := moduleToUpdate.Latest
-	packageJSONBuffer, _ := ioutil.ReadFile(dir + "/package.json")
+	packageJSONBuffer, _ := ioutil.ReadFile(path.Join(dir, "package.json"))
 	var parsedPackageJSON packageJSON
 
 	json.Unmarshal(packageJSONBuffer, &parsedPackageJSON)
@@ -95,7 +96,7 @@ func (npm *Npm) UpdateDependency(dir string, moduleToUpdate versionManager.Modul
 	enc.SetIndent("", "  ")
 	enc.Encode(parsedPackageJSON)
 	updatedJSON := buf.Bytes()
-	ioutil.WriteFile(dir+"/package.json", updatedJSON, 0770)
+	ioutil.WriteFile(path.Join(dir, "/package.json"), updatedJSON, 0770)
 
 	return true, nil
 }

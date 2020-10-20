@@ -10,7 +10,7 @@ import (
 	"github.com/coveooss/lure/lib/lure/log"
 )
 
-func SynchronizedBranchesCommand(project project.Project, sourceControl sourceControl, repository repository, args map[string]string) error {
+func SynchronizedBranchesCommand(project project.Project, sourceControl sourceControl, repository Repository, args map[string]string) error {
 	fromBranch, ok := args["from"]
 	if !ok {
 		return errors.New("Missing argument 'from'")
@@ -23,7 +23,7 @@ func SynchronizedBranchesCommand(project project.Project, sourceControl sourceCo
 	return synchronizedBranches(project, sourceControl, repository, fromBranch, toBranch)
 }
 
-func synchronizedBranches(project project.Project, sourceControl sourceControl, repository repository, fromBranch string, toBranch string) error {
+func synchronizedBranches(project project.Project, sourceControl sourceControl, repository Repository, fromBranch string, toBranch string) error {
 	if _, err := sourceControl.Update(toBranch); err != nil {
 		return err
 	}

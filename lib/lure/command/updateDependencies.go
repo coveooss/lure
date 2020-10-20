@@ -39,11 +39,11 @@ func appendIfMissing(modules []versionManager.ModuleVersion, modulesToAdd []vers
 	return modules
 }
 
-func CheckForUpdatesJobCommand(project project.Project, sourceControl sourceControl, repository repository, args map[string]string, mvn outdatedGetter, npm outdatedGetter) error {
+func CheckForUpdatesJobCommand(project project.Project, sourceControl sourceControl, repository Repository, args map[string]string, mvn outdatedGetter, npm outdatedGetter) error {
 	return checkForUpdatesJob(project, sourceControl, repository, args["commitMessage"], args["pullRequestDescription"], mvn, npm)
 }
 
-func checkForUpdatesJob(project project.Project, sourceControl sourceControl, repository repository, commitMessage string, description string, mvn outdatedGetter, npm outdatedGetter) error {
+func checkForUpdatesJob(project project.Project, sourceControl sourceControl, repository Repository, commitMessage string, description string, mvn outdatedGetter, npm outdatedGetter) error {
 	log.Logger.Infof("switching to default branch: %s", project.DefaultBranch)
 	if _, err := sourceControl.Update(project.DefaultBranch); err != nil {
 		return fmt.Errorf("Error: \"Could not switch to branch %s\" %s", project.DefaultBranch, err)
@@ -105,7 +105,7 @@ func checkForUpdatesJob(project project.Project, sourceControl sourceControl, re
 	return nil
 }
 
-func updateModule(moduleToUpdate versionManager.ModuleVersion, project project.Project, sourceControl sourceControl, repository repository, existingPRs []repositorymanagementsystem.PullRequest, commitMessage string, description string) {
+func updateModule(moduleToUpdate versionManager.ModuleVersion, project project.Project, sourceControl sourceControl, repository Repository, existingPRs []repositorymanagementsystem.PullRequest, commitMessage string, description string) {
 	var dependencyName string
 	if moduleToUpdate.Name != "" {
 		dependencyName = moduleToUpdate.Name
@@ -195,7 +195,7 @@ func updateModule(moduleToUpdate versionManager.ModuleVersion, project project.P
 	}
 }
 
-func closeOldBranchesWithoutOpenPR(project project.Project, sourceControl sourceControl, repository repository) error {
+func closeOldBranchesWithoutOpenPR(project project.Project, sourceControl sourceControl, repository Repository) error {
 	log.Logger.Info("Cleaning up lure branches with no associated PRs.")
 
 	branchPrefix := project.BranchPrefix

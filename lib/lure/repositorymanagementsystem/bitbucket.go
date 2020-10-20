@@ -64,7 +64,7 @@ type pullRequest struct {
 	Reviewers         []user `json:"reviewers"`
 }
 
-func New(authentication vcs.Authentication, project project.Project) BitBucket {
+func NewBitbucket(authentication vcs.Authentication, project project.Project) BitBucket {
 	return BitBucket{
 		URL:            "https://bitbucket.org/" + project.Owner + "/" + project.Name,
 		apiURL:         "https://api.bitbucket.org/2.0/repositories",

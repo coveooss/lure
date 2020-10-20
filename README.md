@@ -15,6 +15,7 @@ The file should look like:
 {
     "projects": [{
             "vcs": "hg",
+            "host": "bitbucket",
             "owner": "dreisch",
             "name": "catfeederhg",
             "defaultBranch": "default",
@@ -34,6 +35,7 @@ The file should look like:
         },
         {
             "vcs": "git",
+            "host": "github",
             "owner": "dreisch",
             "name": "catfeedergit",
             "defaultBranch": "master",
@@ -51,17 +53,19 @@ The file should look like:
 ```
 
 Possible vcs are:
-- `hg` for mercurial
 - `git` for git
+- `hg` for mercurial
+
+Possible hosts are `github` and `bitbucket`. For now, `bitbucket` is the default.
 
 The possible commands are:
 - `updateDependencies`
 - `synchronizedBranches`
 
 Other:
-- `owner`: https ://bitbucket.org/**owner**/name
-- `name`: https ://bitbucket.org/owner/**name**
-- `skipPackageManager` (Optional):  Allows to explicitely skip a package manager update. Allowed keys are: `npm` and `mvn`.
+- `owner`: https ://bitbucket.org/**owner**/name or https ://github.com/**owner**/name
+- `name`: https ://bitbucket.org/owner/**name** or https ://github.com/owner/**name**
+- `skipPackageManager` (Optional):  Allows to explicitly skip a package manager update. Allowed keys are: `npm` and `mvn`.
 - `useDefaultReviewers` (Optional): True by default, allows NOT using the default reviewer list on pull requests.
 
 ## Setup your CI
@@ -78,18 +82,27 @@ chmod +x lure
 
 ```
 
-You need bitbucket api-key and api-secret, see, the [bitbucket documentation](https://confluence.atlassian.com/bitbucket/oauth-on-bitbucket-cloud-238027431.html#OAuthonBitbucketCloud-OAuth2.0) for OAuth setup.
-
 Environment variables:
 
 - `IGNORE_DECLINED_PR=1` Will ignore declined PR when looking if the PR exists
-- `BITBUCKET_CLIENT_ID` the bitbucket OAuth **Key** previously created
-- `BITBUCKET_CLIENT_SECRET` the bitbucket OAuth **Secret** previously created
 - `LURE_AUTO_OPEN_AUTH_PAGE` automaticaly open the browser when using OAuth
 - `DRY_RUN` won't create a PR
 
+With Bitbucket:
+You need bitbucket api-key and api-secret, see, the [bitbucket documentation](https://confluence.atlassian.com/bitbucket/oauth-on-bitbucket-cloud-238027431.html#OAuthonBitbucketCloud-OAuth2.0) for OAuth setup.
+
+- `BITBUCKET_CLIENT_ID` the bitbucket OAuth **Key** previously created
+- `BITBUCKET_CLIENT_SECRET` the bitbucket OAuth **Secret** previously created
+
+With GitHub:
+You can provide an access token from a GitHub App: `GITHUB_ACCESS_TOKEN` 
+
+Another option is to provide a username and password. When using a Personal Access Token, for example:
+- `GITHUB_USERNAME`
+- `GITHUB_PASSWORD`
+
 Custom parameter:
-- `-verbose` Will print additionnal logs that could be helpful for debugging
+- `-verbose` Will print additional logs that could be helpful for debugging
 
 ## Develop
 

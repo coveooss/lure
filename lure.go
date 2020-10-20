@@ -84,19 +84,31 @@ func runMain(config *project.LureConfig, auth vcs.Authentication) {
 		if err != nil {
 			log.Logger.Fatalf("\"Could not generate guid\" %s", err)
 		}
-		localDestination := "/tmp/" + repoGUID.String()
+		localDestination := os.TempDir() + repoGUID.String()
 
-		provider := repository.New(auth, projectConfig)
+		var provider command.Repository
+		switch projectConfig.Host {
+		case vcs.GitHub:
+			provider = repository.NewGitHub(auth, projectConfig)
+		case vcs.Bitbucket:
+			provider = repository.NewBitbucket(auth, projectConfig)
+		default:
+			// host = nil
+			err = fmt.Errorf("Unknown Host '%s' - must be one of %s, %s", projectConfig.Host, vcs.GitHub, vcs.Bitbucket)
+			os.Exit(1)
+		}
+
 
 		var sourceControl vcs.SourceControl
 		switch projectConfig.Vcs {
 		case vcs.Hg:
-			sourceControl, err = vcs.NewHg(auth, provider.URL, localDestination, projectConfig.GetDefaultBranch(), projectConfig.GetTrashBranch(), projectConfig.GetBasePath())
+			sourceControl, err = vcs.NewHg(auth, provider.GetURL(), localDestination, projectConfig.GetDefaultBranch(), projectConfig.GetTrashBranch(), projectConfig.GetBasePath())
 		case vcs.Git:
-			sourceControl, err = vcs.NewGit(auth, provider.URL, localDestination, projectConfig.GetBasePath())
+			sourceControl, err = vcs.NewGit(auth, provider.GetURL(), localDestination, projectConfig.GetBasePath())
 		default:
 			//repo = nil
 			err = fmt.Errorf("Unknown VCS '%s' - must be one of %s, %s", projectConfig.Vcs, vcs.Git, vcs.Hg)
+			os.Exit(1)
 		}
 
 		sourceControl.Clone()
@@ -125,9 +137,23 @@ func runMain(config *project.LureConfig, auth vcs.Authentication) {
 }
 
 func mainWithEnvironmentAuth(config *project.LureConfig) {
-	auth := vcs.UserPassAuth{
-		Username: os.Getenv("BITBUCKET_USERNAME"),
-		Password: os.Getenv("BITBUCKET_PASSWORD"),
+	var auth vcs.Authentication
+	accessToken := os.Getenv("GITHUB_ACCESS_TOKEN")
+	if accessToken != "" {
+		auth = vcs.TokenAuth{User: "x-access-token", Token: accessToken}
+	} else {
+		username := os.Getenv("GITHUB_USERNAME")
+		password := os.Getenv("GITHUB_PASSWORD")
+		if username != "" && password != "" {
+			auth = vcs.UserPassAuth{Username: username, Password: password}
+		} else {
+			username := os.Getenv("BITBUCKET_USERNAME")
+			password := os.Getenv("BITBUCKET_PASSWORD")
+			auth = vcs.UserPassAuth{
+				Username: username,
+				Password: password,
+			}
+		}
 	}
 
 	runMain(config, auth)
@@ -173,7 +199,7 @@ func mainWithOAuth(config *project.LureConfig) {
 		   </script></body></html>`))
 
 		go (func() {
-			auth := vcs.TokenAuth{token.AccessToken}
+			auth := vcs.TokenAuth{User:"x-token-auth", Token: token.AccessToken}
 
 			runMain(config, auth)
 			os.Exit(0)
@@ -224,6 +250,12 @@ func loadConfig(filePath string) (*project.LureConfig, error) {
 	lureConfig := &project.LureConfig{}
 	if err := json.NewDecoder(file).Decode(lureConfig); err != nil {
 		return nil, err
+	}
+	// Default value for host
+	for i, lureProject := range lureConfig.Projects {
+		if lureProject.Host == "" {
+			lureConfig.Projects[i].Host = vcs.Bitbucket
+		}
 	}
 	configJson, _ := json.Marshal(lureConfig)
 	log.Logger.Trace("Config:", string(configJson))

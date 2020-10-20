@@ -69,6 +69,10 @@ func (d *dummyRepository) DeclinePullRequest(string, string, int) error {
 	return nil
 }
 
+func (d *dummyRepository) GetURL() string {
+	return ""
+}
+
 type dummyVersionControl struct {
 	ModuleToReturn       []versionManager.ModuleVersion
 	GetOutdatedError     error

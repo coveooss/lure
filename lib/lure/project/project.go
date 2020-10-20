@@ -7,6 +7,7 @@ type Command struct {
 
 type Project struct {
 	Vcs                 string          `json:"vcs"`
+	Host                string          `json:"host,omitempty"`
 	Owner               string          `json:"owner"`
 	Name                string          `json:"name"`
 	DefaultBranch       string          `json:"defaultBranch"`

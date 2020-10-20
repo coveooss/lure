@@ -20,10 +20,12 @@ type sourceControl interface {
 	Commit(string) (string, error)
 }
 
-type repository interface {
+type Repository interface {
+	GetURL() string
+
 	CreatePullRequest(sourceBranch string, destBranch string, owner string, repo string, title string, description string, useDefaultReviewers bool) error
 	GetPullRequests(string, string, bool) ([]managementsystem.PullRequest, error)
 	DeclinePullRequest(string, string, int) error
 }
 
-type Func func(project project.Project, sourceControl vcs.SourceControl, repository repository, args map[string]string) error
+type Func func(project project.Project, sourceControl vcs.SourceControl, repository Repository, args map[string]string) error

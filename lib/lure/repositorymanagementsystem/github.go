@@ -58,7 +58,11 @@ func (gh GitHub) GetPullRequests(username string, repoSlug string, ignoreDecline
 	httpClient := gh.authentication.AuthenticateWithToken()
 	client := github.NewClient(httpClient)
 
-	options := github.PullRequestListOptions{State: "open"}
+	state := "open"
+	if !ignoreDeclinedPRs {
+		state = "all"
+	}
+	options := github.PullRequestListOptions{State: state}
 	prs, _, err := client.PullRequests.List(context.Background(), username, repoSlug, &options)
 
 	if err != nil {

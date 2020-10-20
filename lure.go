@@ -95,6 +95,7 @@ func runMain(config *project.LureConfig, auth vcs.Authentication) {
 		default:
 			// host = nil
 			err = fmt.Errorf("Unknown Host '%s' - must be one of %s, %s", projectConfig.Host, vcs.GitHub, vcs.Bitbucket)
+			os.Exit(1)
 		}
 
 
@@ -107,6 +108,7 @@ func runMain(config *project.LureConfig, auth vcs.Authentication) {
 		default:
 			//repo = nil
 			err = fmt.Errorf("Unknown VCS '%s' - must be one of %s, %s", projectConfig.Vcs, vcs.Git, vcs.Hg)
+			os.Exit(1)
 		}
 
 		sourceControl.Clone()
@@ -252,7 +254,7 @@ func loadConfig(filePath string) (*project.LureConfig, error) {
 	// Default value for host
 	for i, lureProject := range lureConfig.Projects {
 		if lureProject.Host == "" {
-			lureConfig.Projects[i].Host = "bitbucket"
+			lureConfig.Projects[i].Host = vcs.Bitbucket
 		}
 	}
 	configJson, _ := json.Marshal(lureConfig)

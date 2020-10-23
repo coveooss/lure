@@ -1,6 +1,6 @@
 # lure
 
-[![Build Status](https://travis-ci.org/coveooss/lure.svg)](https://travis-ci.org/coveooss/lure)
+[![Build Status](https://github.com/coveooss/lure/workflows/Go/badge.svg)](https://github.com/coveooss/lure/actions?query=workflow%3AGo)
 [![Go Report Card](https://goreportcard.com/badge/github.com/coveooss/lure)](https://goreportcard.com/report/github.com/coveooss/lure)
 
 Update your dependencies, with hooks, for developers.

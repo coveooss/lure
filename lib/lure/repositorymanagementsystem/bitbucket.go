@@ -123,8 +123,16 @@ func (bitbucket BitBucket) GetPullRequests(username string, repoSlug string, ign
 			ID:                bitBucketPr.ID,
 			Title:             bitBucketPr.Title,
 			Description:       bitBucketPr.Description,
-			Source:            &bitBucketPr.Source,
-			Dest:              &bitBucketPr.Dest,
+			Source:            &source{
+				Branch: branch{
+					Name: bitBucketPr.Source.GetName(),
+				},
+			},
+			Dest:              &dest{
+				Branch: branch{
+					Name: bitBucketPr.Dest.GetName(),
+				},
+			},
 			CloseSourceBranch: bitBucketPr.CloseSourceBranch,
 			State:             bitBucketPr.State,
 			Reviewers:         bitBucketPr.Reviewers,

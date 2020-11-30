@@ -243,13 +243,15 @@ func (mvn *Mvn) UpdateDependency(path string, moduleVersion versionManager.Modul
 		var autoUpdateResult string
 		autoUpdateResult, err = osUtils.Execute(path, "mvn", "test-compile", "compile", "--batch-mode", "--update-snapshots", "org.codehaus.mojo:versions-maven-plugin:2.4:use-dep-version", "-Dincludes="+dependency, "-DdepVersion="+version)
 
-		if strings.Contains(autoUpdateResult, fmt.Sprintf("Updated %s:jar:%s to version %s", dependency, moduleVersion.Current, version)) == true {
+		var regex = strings.Replace(regexp.QuoteMeta(fmt.Sprintf("Updated %s:jar:%s to version %s", dependency, moduleVersion.Current, version)), ":jar:", ":(test-)?jar:", 1)
+		log.Logger.Tracef("regex: %s", regex)
+		if matched, _ := regexp.MatchString(regex, autoUpdateResult); matched {
 			hasUpdate = true
 		}
 	}
 
 	if hasUpdate == true {
-		log.Logger.Infof("Updated %s:%s:jar:%s to version %s", moduleVersion.Module, dependency, moduleVersion.Current, version)
+		log.Logger.Infof("Updated %s:%s:(test-)?jar:%s to version %s", moduleVersion.Module, dependency, moduleVersion.Current, version)
 	}
 
 	return hasUpdate, err

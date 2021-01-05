@@ -36,7 +36,7 @@ func NewGit(auth Authentication, source string, to string, basePath string) (Git
 
 func (gitRepo GitRepo) SanitizeBranchName(branchName string) string {
 	//TODO: https://wincent.com/wiki/Legal_Git_branch_names
-	reg, _ := regexp.Compile("[^a-zA-Z0-9_-]+")
+	reg, _ := regexp.Compile("[^a-zA-Z0-9/_-]+")
 	safe := reg.ReplaceAllString(branchName, "_")
 	return safe
 }

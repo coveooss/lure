@@ -5,6 +5,11 @@
 
 Update your dependencies, with hooks, for developers.
 
+## IMPORTANT NOTE
+This repository is now in read only. Since the creation of this project, viable alternative are available and provide more flexibility.
+
+Thank you for your service lure, have a good end of life
+
 ## Setup your repository
 
 First create a `lure.config` in the repository you want to keep your dependencies up-to-date.
